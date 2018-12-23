@@ -4,9 +4,11 @@ WIP
 
 # Running
 
-Install rust
+Install rustup and rust nightly
+
 ```
 $ curl https://sh.rustup.rs -sSf | sh
+$ rustup install nightly
 ```
 
 then
