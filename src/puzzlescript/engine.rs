@@ -610,11 +610,11 @@ fn check_win_condition(win_condition: &WinCondition, stage: &Stage) -> bool {
 
 fn check_win_conditions(win_conditions: &[WinCondition], stage: &Stage) -> bool {
     for win_condition in win_conditions {
-        if check_win_condition(win_condition, stage) {
-            return true;
+        if !check_win_condition(win_condition, stage) {
+            return false;
         }
     }
-    false
+    true
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
