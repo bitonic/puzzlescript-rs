@@ -1,5 +1,9 @@
 WIP
 
+[![CircleCI](https://circleci.com/gh/bitonic/puzzlescript-rs/tree/master.svg?style=svg)](https://circleci.com/gh/bitonic/puzzlescript-rs/tree/master)
+
+# Running
+
 Install rust
 ```
 $ curl https://sh.rustup.rs -sSf | sh
