@@ -21,6 +21,7 @@ pub struct Prelude {
     pub again_interval: Option<f64>,
     pub norepeat_action: bool,
     pub debug: bool,
+    pub verbose_logging: bool,
 }
 
 pub type ObjectName = Rc<str>;
@@ -189,6 +190,7 @@ impl Ast {
                 again_interval: None,
                 norepeat_action: false,
                 debug: false,
+                verbose_logging: false,
             },
             entities: Entities {
                 objects: HashMap::new(),

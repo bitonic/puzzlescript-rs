@@ -419,6 +419,8 @@ impl<'a> ParseState<'a> {
             self.ast.prelude.norepeat_action = true;
         } else if self.lex_token("debug")? {
             self.ast.prelude.debug = true;
+        } else if self.lex_token("verbose_logging")? {
+            self.ast.prelude.verbose_logging = true;
         } else {
             Err("Invalid prelude line")?;
         }
