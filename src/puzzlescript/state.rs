@@ -180,23 +180,27 @@ impl<'a> State<'a> {
             Status::Won { .. } => (),
             Status::Playing => match mb_command {
                 None => (),
-                Some(command) => match command {
-                    Command::Up => self.move_(Movement::Up),
-                    Command::Down => self.move_(Movement::Down),
-                    Command::Left => self.move_(Movement::Left),
-                    Command::Right => self.move_(Movement::Right),
-                    Command::Action => self.move_(Movement::Action),
-                    Command::Undo => {
-                        if self.history.len() > 1 {
-                            self.history.pop();
+                Some(command) => {
+                    verbose_log!("====");
+                    verbose_log!("# Applying command {:?}", command);
+                    match command {
+                        Command::Up => self.move_(Movement::Up),
+                        Command::Down => self.move_(Movement::Down),
+                        Command::Left => self.move_(Movement::Left),
+                        Command::Right => self.move_(Movement::Right),
+                        Command::Action => self.move_(Movement::Action),
+                        Command::Undo => {
+                            if self.history.len() > 1 {
+                                self.history.pop();
+                            }
+                        }
+                        Command::Restart => {
+                            // do not reset when restarting -- we want to be able to
+                            // undo beyond the restart
+                            self.push_level(self.last_state().level_number);
                         }
                     }
-                    Command::Restart => {
-                        // do not reset when restarting -- we want to be able to
-                        // undo beyond the restart
-                        self.push_level(self.last_state().level_number);
-                    }
-                },
+                }
             },
         }
     }

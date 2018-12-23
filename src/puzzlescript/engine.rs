@@ -360,8 +360,17 @@ fn apply_rule(
 
     let matched = apply_rule_body(properties, stage, axis, reversed, &rule.body);
     if matched {
+        verbose_log!("Rule {} {} applied.", rule.line_number, rule.direction);
         for command in rule.commands.clone() {
             commands.push(command.clone());
+            // exit early on cancel, since the original puzzlescript allows
+            // you to write rules that match forever + cancel
+            //
+            // TODO Have this to be more structured, go all the way up with
+            // an explicit Cancel rather than a boolean
+            if command == RuleCommand::Cancel {
+                return false;
+            }
         }
     };
     matched
@@ -622,8 +631,11 @@ pub enum Advance {
 pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
     let mut active = false;
     let mut commands = Vec::new();
+    verbose_log!("# Applying rules");
     active = apply_rule_groups(&game.properties, stage, &mut commands, &game.rules) || active;
+    verbose_log!("# Applying movement");
     active = apply_movement(&game.collision_layers, stage) || active;
+    verbose_log!("# Applying late rules");
     active = apply_rule_groups(&game.properties, stage, &mut commands, &game.late_rules) || active;
     if has_movement(stage) {
         panic!("Got movement after late rules!");

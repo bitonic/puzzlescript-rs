@@ -6,8 +6,12 @@ use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
 use std::rc::Rc;
+use std::sync::atomic::Ordering;
 use std::time::SystemTime;
 use structopt::StructOpt;
+
+#[macro_use]
+pub mod logging;
 
 pub mod ast;
 pub mod colors;
@@ -19,6 +23,7 @@ pub mod render;
 pub mod state;
 
 use self::colors::*;
+use self::logging::*;
 use self::state::*;
 
 #[derive(Debug, StructOpt)]
@@ -60,21 +65,22 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         compiler::compile(&ast)?
     };
 
-    if game.prelude.debug {
-        println!(
-            "{} rules",
-            game.rules
-                .iter()
-                .fold(0, |count, rule_group| count + rule_group.rules.len())
-        );
-        println!();
-        for rule_group in game.rules.iter() {
-            println!("{}", rule_group);
-        }
-        println!("late rules:");
-        for rule_group in game.late_rules.iter() {
-            println!("{}", rule_group);
-        }
+    VERBOSE_LOGGING.store(game.prelude.verbose_logging, Ordering::Relaxed);
+    DEBUG_LOGGING.store(game.prelude.debug, Ordering::Relaxed);
+
+    debug_log!(
+        "{} rules",
+        game.rules
+            .iter()
+            .fold(0, |count, rule_group| count + rule_group.rules.len())
+    );
+    debug_log!();
+    for rule_group in game.rules.iter() {
+        debug_log!("{}", rule_group);
+    }
+    debug_log!("late rules:");
+    for rule_group in game.late_rules.iter() {
+        debug_log!("{}", rule_group);
     }
 
     let title = match &game.prelude.title {
