@@ -1,7 +1,7 @@
+use crate::grid::Grid;
 use crate::math::*;
 use crate::puzzlescript::ast::*;
 use crate::puzzlescript::colors::*;
-use crate::puzzlescript::grid::Grid;
 use failure::Fail;
 use lazy_static::*;
 use std::collections::HashSet;

@@ -14,7 +14,6 @@ pub mod colors;
 pub mod compiler;
 pub mod engine;
 pub mod game;
-pub mod grid;
 pub mod parser;
 pub mod render;
 pub mod state;
