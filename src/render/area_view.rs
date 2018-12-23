@@ -8,6 +8,7 @@ pub struct AreaView {
 }
 
 impl AreaView {
+    #[rustfmt::skip]
     pub fn to_matrix(&self, aspect_ratio: f32) -> Matrix3<f32> {
         let size_x = self.width(aspect_ratio);
         let size_y = self.height(aspect_ratio);
@@ -16,12 +17,11 @@ impl AreaView {
         let trans_x = -(self.center[0] * scale_x);
         let trans_y = -(self.center[1] * scale_y);
 
-        #[rustfmt::skip]
-      Matrix3::<f32>::new(
-      scale_x, 0.0,      trans_x,
-      0.0,     -scale_y, trans_y,
-      0.0,     0.0,      1.0
-    )
+        Matrix3::<f32>::new(
+            scale_x, 0.0,      trans_x,
+            0.0,     -scale_y, trans_y,
+            0.0,     0.0,      1.0
+        )
     }
 
     pub fn width(&self, aspect_ratio: f32) -> f32 {

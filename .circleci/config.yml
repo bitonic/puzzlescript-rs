@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: bitonic123/puzzlescript-rs:20181223-1
+      - image: bitonic123/puzzlescript-rs:20181223-2
         # Build the binary quicker -- mostly just about linking:
         #
         # * Do not emit debug info

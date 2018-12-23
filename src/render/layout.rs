@@ -34,14 +34,13 @@ impl LayoutPosition {
         let scaled_x = self.position[0] * scale[0];
         let scaled_y = self.position[1] * scale[1];
 
-        #[rustfmt::skip]
-    let (x, y) = match self.origin {
-      LayoutOrigin::TopLeft     => (scaled_x - 1.0, 1.0 - scaled_y),
-      LayoutOrigin::TopRight    => (1.0 - scaled_x, 1.0 - scaled_y),
-      LayoutOrigin::BottomLeft  => (scaled_x - 1.0, scaled_y - 1.0),
-      LayoutOrigin::BottomRight => (1.0 - scaled_x, scaled_y - 1.0),
-      LayoutOrigin::Center      => (scaled_x,       scaled_y),
-    };
+        let (x, y) = match self.origin {
+            LayoutOrigin::TopLeft => (scaled_x - 1.0, 1.0 - scaled_y),
+            LayoutOrigin::TopRight => (1.0 - scaled_x, 1.0 - scaled_y),
+            LayoutOrigin::BottomLeft => (scaled_x - 1.0, scaled_y - 1.0),
+            LayoutOrigin::BottomRight => (1.0 - scaled_x, scaled_y - 1.0),
+            LayoutOrigin::Center => (scaled_x, scaled_y),
+        };
 
         vec2(x, y)
     }
@@ -54,14 +53,13 @@ impl LayoutPosition {
         let scale = layout_scale(window_size);
 
         let (x, y) = (coords[0], coords[1]);
-        #[rustfmt::skip]
-    let (scaled_x, scaled_y) = match origin {
-      LayoutOrigin::TopLeft     => (1.0 + x, 1.0 - y),
-      LayoutOrigin::TopRight    => (1.0 - x, 1.0 - y),
-      LayoutOrigin::BottomLeft  => (1.0 + x, 1.0 + y),
-      LayoutOrigin::BottomRight => (1.0 - x, 1.0 + y),
-      LayoutOrigin::Center      => (      x,       y),
-    };
+        let (scaled_x, scaled_y) = match origin {
+            LayoutOrigin::TopLeft => (1.0 + x, 1.0 - y),
+            LayoutOrigin::TopRight => (1.0 - x, 1.0 - y),
+            LayoutOrigin::BottomLeft => (1.0 + x, 1.0 + y),
+            LayoutOrigin::BottomRight => (1.0 - x, 1.0 + y),
+            LayoutOrigin::Center => (x, y),
+        };
 
         LayoutPosition {
             position: vec2(scaled_x / scale[0], scaled_y / scale[1]),
@@ -149,28 +147,23 @@ mod tests {
             LayoutPosition::new(LayoutOrigin::TopLeft, x, y)
         }
 
-        #[rustfmt::skip]
-    tests(&[
-      (SAME_SIZE,     pos(0.0, 0.0), vec2(-1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 0.0), vec2(-1.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(-1.0,  1.0)),
-
-      (SAME_SIZE,     pos(0.0, 2.0), vec2(-1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 2.0), vec2(-1.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(-1.0,  0.0)),
-
-      (SAME_SIZE,     pos(2.0, 0.0), vec2( 1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 0.0), vec2( 0.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2( 1.0,  1.0)),
-
-      (SAME_SIZE,     pos(2.0, 2.0), vec2( 1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 2.0), vec2( 0.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2( 1.0,  0.0)),
-
-      (SAME_SIZE,     pos(1.0, 1.0), vec2( 0.0,  0.0)),
-      (DOUBLE_WIDTH,  pos(1.0, 1.0), vec2(-0.5,  0.0)),
-      (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2( 0.0,  0.5)),
-    ]);
+        tests(&[
+            (SAME_SIZE, pos(0.0, 0.0), vec2(-1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 0.0), vec2(-1.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(-1.0, 1.0)),
+            (SAME_SIZE, pos(0.0, 2.0), vec2(-1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 2.0), vec2(-1.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(-1.0, 0.0)),
+            (SAME_SIZE, pos(2.0, 0.0), vec2(1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 0.0), vec2(0.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(1.0, 1.0)),
+            (SAME_SIZE, pos(2.0, 2.0), vec2(1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 2.0), vec2(0.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(1.0, 0.0)),
+            (SAME_SIZE, pos(1.0, 1.0), vec2(0.0, 0.0)),
+            (DOUBLE_WIDTH, pos(1.0, 1.0), vec2(-0.5, 0.0)),
+            (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2(0.0, 0.5)),
+        ]);
     }
 
     #[test]
@@ -179,28 +172,23 @@ mod tests {
             LayoutPosition::new(LayoutOrigin::TopRight, x, y)
         }
 
-        #[rustfmt::skip]
-    tests(&[
-      (SAME_SIZE,     pos(0.0, 0.0), vec2( 1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 0.0), vec2( 1.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2( 1.0,  1.0)),
-
-      (SAME_SIZE,     pos(0.0, 2.0), vec2( 1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 2.0), vec2( 1.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2( 1.0,  0.0)),
-
-      (SAME_SIZE,     pos(2.0, 0.0), vec2(-1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 0.0), vec2( 0.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(-1.0,  1.0)),
-
-      (SAME_SIZE,     pos(2.0, 2.0), vec2(-1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 2.0), vec2( 0.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(-1.0,  0.0)),
-
-      (SAME_SIZE,     pos(1.0, 1.0), vec2( 0.0,  0.0)),
-      (DOUBLE_WIDTH,  pos(1.0, 1.0), vec2( 0.5,  0.0)),
-      (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2( 0.0,  0.5)),
-    ]);
+        tests(&[
+            (SAME_SIZE, pos(0.0, 0.0), vec2(1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 0.0), vec2(1.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(1.0, 1.0)),
+            (SAME_SIZE, pos(0.0, 2.0), vec2(1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 2.0), vec2(1.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(1.0, 0.0)),
+            (SAME_SIZE, pos(2.0, 0.0), vec2(-1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 0.0), vec2(0.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(-1.0, 1.0)),
+            (SAME_SIZE, pos(2.0, 2.0), vec2(-1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 2.0), vec2(0.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(-1.0, 0.0)),
+            (SAME_SIZE, pos(1.0, 1.0), vec2(0.0, 0.0)),
+            (DOUBLE_WIDTH, pos(1.0, 1.0), vec2(0.5, 0.0)),
+            (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2(0.0, 0.5)),
+        ]);
     }
 
     #[test]
@@ -209,28 +197,23 @@ mod tests {
             LayoutPosition::new(LayoutOrigin::BottomLeft, x, y)
         }
 
-        #[rustfmt::skip]
-    tests(&[
-      (SAME_SIZE,     pos(0.0, 0.0), vec2(-1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 0.0), vec2(-1.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(-1.0, -1.0)),
-
-      (SAME_SIZE,     pos(0.0, 2.0), vec2(-1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 2.0), vec2(-1.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(-1.0,  0.0)),
-
-      (SAME_SIZE,     pos(2.0, 0.0), vec2( 1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 0.0), vec2( 0.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2( 1.0, -1.0)),
-
-      (SAME_SIZE,     pos(2.0, 2.0), vec2( 1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 2.0), vec2( 0.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2( 1.0,  0.0)),
-
-      (SAME_SIZE,     pos(1.0, 1.0), vec2( 0.0,  0.0)),
-      (DOUBLE_WIDTH,  pos(1.0, 1.0), vec2(-0.5,  0.0)),
-      (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2( 0.0, -0.5)),
-    ]);
+        tests(&[
+            (SAME_SIZE, pos(0.0, 0.0), vec2(-1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 0.0), vec2(-1.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(-1.0, -1.0)),
+            (SAME_SIZE, pos(0.0, 2.0), vec2(-1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 2.0), vec2(-1.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(-1.0, 0.0)),
+            (SAME_SIZE, pos(2.0, 0.0), vec2(1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 0.0), vec2(0.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(1.0, -1.0)),
+            (SAME_SIZE, pos(2.0, 2.0), vec2(1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 2.0), vec2(0.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(1.0, 0.0)),
+            (SAME_SIZE, pos(1.0, 1.0), vec2(0.0, 0.0)),
+            (DOUBLE_WIDTH, pos(1.0, 1.0), vec2(-0.5, 0.0)),
+            (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2(0.0, -0.5)),
+        ]);
     }
 
     #[test]
@@ -239,27 +222,22 @@ mod tests {
             LayoutPosition::new(LayoutOrigin::BottomRight, x, y)
         }
 
-        #[rustfmt::skip]
-    tests(&[
-      (SAME_SIZE,     pos(0.0, 0.0), vec2( 1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 0.0), vec2( 1.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2( 1.0, -1.0)),
-
-      (SAME_SIZE,     pos(0.0, 2.0), vec2( 1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(0.0, 2.0), vec2( 1.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2( 1.0,  0.0)),
-
-      (SAME_SIZE,     pos(2.0, 0.0), vec2(-1.0, -1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 0.0), vec2( 0.0, -1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(-1.0, -1.0)),
-
-      (SAME_SIZE,     pos(2.0, 2.0), vec2(-1.0,  1.0)),
-      (DOUBLE_WIDTH,  pos(2.0, 2.0), vec2( 0.0,  1.0)),
-      (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(-1.0,  0.0)),
-
-      (SAME_SIZE,     pos(1.0, 1.0), vec2( 0.0,  0.0)),
-      (DOUBLE_WIDTH,  pos(1.0, 1.0), vec2( 0.5,  0.0)),
-      (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2( 0.0, -0.5)),
-    ]);
+        tests(&[
+            (SAME_SIZE, pos(0.0, 0.0), vec2(1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 0.0), vec2(1.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 0.0), vec2(1.0, -1.0)),
+            (SAME_SIZE, pos(0.0, 2.0), vec2(1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(0.0, 2.0), vec2(1.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(0.0, 2.0), vec2(1.0, 0.0)),
+            (SAME_SIZE, pos(2.0, 0.0), vec2(-1.0, -1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 0.0), vec2(0.0, -1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 0.0), vec2(-1.0, -1.0)),
+            (SAME_SIZE, pos(2.0, 2.0), vec2(-1.0, 1.0)),
+            (DOUBLE_WIDTH, pos(2.0, 2.0), vec2(0.0, 1.0)),
+            (DOUBLE_HEIGHT, pos(2.0, 2.0), vec2(-1.0, 0.0)),
+            (SAME_SIZE, pos(1.0, 1.0), vec2(0.0, 0.0)),
+            (DOUBLE_WIDTH, pos(1.0, 1.0), vec2(0.5, 0.0)),
+            (DOUBLE_HEIGHT, pos(1.0, 1.0), vec2(0.0, -0.5)),
+        ]);
     }
 }

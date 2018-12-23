@@ -162,6 +162,7 @@ impl<'gl> Face<'gl> {
 
     /// Note: the position refers to the "origin" as in this picture
     /// <https://www.freetype.org/freetype2/docs/glyphs/metrics.png>
+    #[rustfmt::skip]
     pub fn draw(
         &mut self,
         window_size: &LogicalSize,
@@ -251,16 +252,15 @@ impl<'gl> Face<'gl> {
                 let w = (glyph_metrics.size[0] * scale[0]) as f32;
                 let h = (glyph_metrics.size[1] * scale[1]) as f32;
 
-                #[rustfmt::skip]
-        let vertices: [[f32; 4]; 6] = [
-          [xpos,     ypos + h,  0.0, 0.0],
-          [xpos,     ypos,      0.0, 1.0],
-          [xpos + w, ypos,      1.0, 1.0],
+                let vertices: [[f32; 4]; 6] = [
+                  [xpos,     ypos + h,  0.0, 0.0],
+                  [xpos,     ypos,      0.0, 1.0],
+                  [xpos + w, ypos,      1.0, 1.0],
 
-          [xpos,     ypos + h,  0.0, 0.0],
-          [xpos + w, ypos,      1.0, 1.0],
-          [xpos + w, ypos + h,  1.0, 0.0],
-        ];
+                  [xpos,     ypos + h,  0.0, 0.0],
+                  [xpos + w, ypos,      1.0, 1.0],
+                  [xpos + w, ypos + h,  1.0, 0.0],
+                ];
 
                 self.gl.bind_buffer(gl::ARRAY_BUFFER, vbo);
                 gl::buffer_sub_data(self.gl, gl::ARRAY_BUFFER, 0, &vertices);

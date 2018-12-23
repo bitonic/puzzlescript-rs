@@ -43,13 +43,24 @@ impl<'gl> ObjectSprite<'gl> {
                 let geometry = Geometry::new(
                     gl,
                     shader.shader,
-                    #[rustfmt::skip]
-          &GeometrySpec::Colored(&[
-            ColoredVertex { pos: vec2(0.0, 0.0), color },
-            ColoredVertex { pos: vec2(0.0, 1.0), color },
-            ColoredVertex { pos: vec2(1.0, 0.0), color },
-            ColoredVertex { pos: vec2(1.0, 1.0), color },
-          ]),
+                    &GeometrySpec::Colored(&[
+                        ColoredVertex {
+                            pos: vec2(0.0, 0.0),
+                            color,
+                        },
+                        ColoredVertex {
+                            pos: vec2(0.0, 1.0),
+                            color,
+                        },
+                        ColoredVertex {
+                            pos: vec2(1.0, 0.0),
+                            color,
+                        },
+                        ColoredVertex {
+                            pos: vec2(1.0, 1.0),
+                            color,
+                        },
+                    ]),
                     &[Triangle(0, 1, 2), Triangle(1, 2, 3)],
                 )?;
                 Ok(ObjectSprite { geometry })
@@ -59,22 +70,41 @@ impl<'gl> ObjectSprite<'gl> {
                 let mut triangles = Vec::new();
 
                 for row in 0..5 {
-                    #[rustfmt::skip]
-          for col in 0..5 {
-            let color = to_float_color(palette, &squares[(row, col)]);
-            let x = col as f32 * 0.2;
-            let y = row as f32 * 0.2;
+                    for col in 0..5 {
+                        let color = to_float_color(palette, &squares[(row, col)]);
+                        let x = col as f32 * 0.2;
+                        let y = row as f32 * 0.2;
 
-            let current_vertex = vertices.len();
+                        let current_vertex = vertices.len();
 
-            vertices.push(ColoredVertex { pos: vec2(x,       y      ), color });
-            vertices.push(ColoredVertex { pos: vec2(x,       y + 0.2), color });
-            vertices.push(ColoredVertex { pos: vec2(x + 0.2, y      ), color });
-            vertices.push(ColoredVertex { pos: vec2(x + 0.2, y + 0.2), color });
+                        vertices.push(ColoredVertex {
+                            pos: vec2(x, y),
+                            color,
+                        });
+                        vertices.push(ColoredVertex {
+                            pos: vec2(x, y + 0.2),
+                            color,
+                        });
+                        vertices.push(ColoredVertex {
+                            pos: vec2(x + 0.2, y),
+                            color,
+                        });
+                        vertices.push(ColoredVertex {
+                            pos: vec2(x + 0.2, y + 0.2),
+                            color,
+                        });
 
-            triangles.push(Triangle(current_vertex,   current_vertex+1, current_vertex+2));
-            triangles.push(Triangle(current_vertex+1, current_vertex+2, current_vertex+3));
-          }
+                        triangles.push(Triangle(
+                            current_vertex,
+                            current_vertex + 1,
+                            current_vertex + 2,
+                        ));
+                        triangles.push(Triangle(
+                            current_vertex + 1,
+                            current_vertex + 2,
+                            current_vertex + 3,
+                        ));
+                    }
                 }
 
                 Ok(ObjectSprite {
@@ -89,13 +119,13 @@ impl<'gl> ObjectSprite<'gl> {
         }
     }
 
+    #[rustfmt::skip]
     pub fn draw(&self, aspect_ratio: f32, view: &FixedView, pos: &Vector2<usize>) {
-        #[rustfmt::skip]
-    let model = Matrix3::new(
-      1.0, 0.0, pos[0] as f32,
-      0.0, 1.0, pos[1] as f32,
-      0.0, 0.0, 1.0,
-    );
+        let model = Matrix3::new(
+            1.0, 0.0, pos[0] as f32,
+            0.0, 1.0, pos[1] as f32,
+            0.0, 0.0, 1.0,
+        );
         self.geometry.draw(&model, &view.to_matrix(aspect_ratio))
     }
 }
