@@ -1,5 +1,5 @@
+use crate::grid;
 use crate::puzzlescript::game::*;
-use crate::puzzlescript::grid;
 use im_rc::hashmap as im_hashmap;
 use std::collections::{HashMap, HashSet};
 

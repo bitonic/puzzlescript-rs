@@ -10,6 +10,7 @@ extern crate structopt;
 
 use structopt::StructOpt;
 
+pub mod grid;
 pub mod math;
 pub mod puzzlescript;
 pub mod render;

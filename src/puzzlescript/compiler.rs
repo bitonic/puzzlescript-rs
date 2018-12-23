@@ -1,7 +1,7 @@
 // TODO remove panics, use error instead
+use crate::grid::*;
 use crate::puzzlescript::ast;
 use crate::puzzlescript::game::*;
-use crate::puzzlescript::grid::*;
 use failure::Fail;
 use im_rc::hashmap as im_hashmap;
 use std::collections::hash_map;
