@@ -3,6 +3,14 @@ jobs:
   build:
     docker:
       - image: bitonic123/puzzlescript-rs:20181223-1
+        # Build the binary quicker -- mostly just about linking:
+        #
+        # * Do not emit debug info
+        # * Use LLD as linker
+        #
+        # Also, treat warnings as errors.
+        environment:
+          RUSTFLAGS: "-C debuginfo=0 -C link-args=-fuse-ld=lld -D warnings"
     steps:
       - run:
           name: Print rust versions
