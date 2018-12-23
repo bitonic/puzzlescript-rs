@@ -6,6 +6,7 @@ pub struct FixedView {
 }
 
 impl FixedView {
+    #[rustfmt::skip]
     pub fn to_matrix(&self, aspect_ratio: f32) -> Matrix3<f32> {
         let target_aspect_ratio = self.size[0] / self.size[1];
 
@@ -16,12 +17,11 @@ impl FixedView {
             let scale_x = 2.0 / actual_width;
             let scale_y = 2.0 / actual_height;
 
-            #[rustfmt::skip]
-      Matrix3::<f32>::new(
-        scale_x,   0.0,     -((actual_width / 2.0) * scale_x),
-        0.0,      -scale_y,  (self.size[1] / 2.0) * scale_y,
-        0.0,       0.0,      1.0,
-      )
+            Matrix3::<f32>::new(
+              scale_x,   0.0,     -((actual_width / 2.0) * scale_x),
+              0.0,      -scale_y,  (self.size[1] / 2.0) * scale_y,
+              0.0,       0.0,      1.0,
+            )
         } else {
             // black bars left and right
             let actual_width = self.size[1] * aspect_ratio;
@@ -29,13 +29,11 @@ impl FixedView {
             let scale_x = 2.0 / actual_width;
             let scale_y = 2.0 / actual_height;
 
-            // y * -scale_y -((actual_height / 2.0) * scale_y) + 2.0
-            #[rustfmt::skip]
-      Matrix3::<f32>::new(
-        scale_x,  0.0,     -((self.size[0] / 2.0) * scale_x),
-        0.0,     -scale_y, -((actual_height / 2.0) * scale_y) + 2.0,
-        0.0,      0.0,      1.0,
-      )
+            Matrix3::<f32>::new(
+                scale_x,  0.0,     -((self.size[0] / 2.0) * scale_x),
+                0.0,     -scale_y, -((actual_height / 2.0) * scale_y) + 2.0,
+                0.0,      0.0,      1.0,
+            )
         }
     }
 }

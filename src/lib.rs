@@ -1,6 +1,3 @@
-#![feature(duration_as_u128)]
-#![feature(stmt_expr_attributes)]
-
 extern crate failure;
 extern crate freetype;
 extern crate gleam;
