@@ -28,6 +28,7 @@ jobs:
       - run:
           name: Test
           command: cargo test
-      - run:
-          name: Doc
-          command: cargo doc
+      # This runs OOM on CircleCI...
+      # - run:
+      #     name: Doc
+      #     command: cargo doc
