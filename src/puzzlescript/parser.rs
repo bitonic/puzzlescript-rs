@@ -1,7 +1,7 @@
 use crate::math::*;
 use crate::puzzlescript::ast::*;
 use crate::puzzlescript::colors::*;
-use crate::puzzlescript::grid::*;
+use crate::puzzlescript::grid::Grid;
 use failure::Fail;
 use lazy_static::*;
 use std::collections::HashSet;
@@ -979,21 +979,23 @@ impl<'a> ParseState<'a> {
         }
         let mb_rhs = self.rule_body()?;
 
-        let mut additional_sounds = self.lex_many(|st| st.lex_sound_fx())?;
-
-        let command = self.lex_rule_command()?;
-
-        let mut sounds = Vec::new();
+        let mut commands = Vec::new();
+        commands.append(&mut self.lex_many(|st| {
+            st.lex_sound_fx()
+                .map(|mb_sound| mb_sound.map(RuleCommand::Sound))
+        })?);
+        commands.append(&mut self.lex_rule_command()?.into_iter().collect());
 
         let body = match mb_rhs {
-            None => {
-                sounds.append(&mut additional_sounds);
-                RuleBody::NoConsequence(lhs_matchers)
-            }
+            None => RuleBody::NoConsequence(lhs_matchers),
 
-            Some((rhs_matchers, mut rhs_sounds)) => {
-                sounds.append(&mut rhs_sounds);
-                sounds.append(&mut additional_sounds);
+            Some((rhs_matchers, rhs_sounds)) => {
+                commands.append(
+                    &mut rhs_sounds
+                        .into_iter()
+                        .map(|sound| RuleCommand::Sound(sound))
+                        .collect(),
+                );
 
                 let mut matchers = Vec::new();
 
@@ -1010,9 +1012,9 @@ impl<'a> ParseState<'a> {
                 {
                     if lhs_matcher.len() != rhs_matcher.len() {
                         return Err(format!(
-              "Rules must have the same number of cells for each matcher -- got {:?} and {:?}",
-              lhs_matcher, rhs_matcher
-            ));
+                          "Rules must have the same number of cells for each matcher -- got {:?} and {:?}",
+                          lhs_matcher, rhs_matcher
+                        ));
                     }
 
                     let mut matcher = Vec::new();
@@ -1052,8 +1054,7 @@ impl<'a> ParseState<'a> {
             line_number,
             direction,
             body,
-            sounds,
-            command,
+            commands,
         };
 
         if grouped {

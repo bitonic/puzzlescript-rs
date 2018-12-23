@@ -96,8 +96,7 @@ pub struct Rule {
     pub line_number: usize,
     pub direction: RuleDirection,
     pub body: RuleBody,
-    pub sounds: Vec<SoundFx>,
-    pub command: Option<RuleCommand>,
+    pub commands: Vec<RuleCommand>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

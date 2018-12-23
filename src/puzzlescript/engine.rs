@@ -264,15 +264,45 @@ fn apply_rule_body(
         grid::SliceAxis::Col => stage.ncols(),
     };
     match rule_body {
-        RuleBody::NoConsequence(_matchers) => {
-            panic!("TODO RuleBody::NoConsequence");
+        RuleBody::NoConsequence(matchers) => {
+            // loop through all the matchers
+            'no_consequence_matchers: for matcher in matchers.iter() {
+                // and for each matcher, loop through each slice.
+                for slice_ix in 0..max_slice_index {
+                    let cells = grid::Slice {
+                        desc: grid::SliceDesc {
+                            axis,
+                            reversed,
+                            index: slice_ix,
+                        },
+                        grid: stage,
+                    };
+                    // if we match, greedily choose this match and go to next matcher.
+                    // note that we do not need to "backtrack" if subsequent matchers
+                    // do not match, since matchers can never influence each other.
+                    //
+                    // in other words, if we're trying to match matcher `A` and then
+                    // matcher `B`, if matcher `A` matched with some configuration and
+                    // matcher `B` does not, matcher `B` will never match regardless
+                    // of the configuration we have picked for `A`.
+                    match match_cells(/* rule_line_number, */ properties, &cells, matcher) {
+                        None => (),
+                        Some(_) => continue 'no_consequence_matchers,
+                    }
+                }
+
+                // we could not match this matcher in any way. give up.
+                return false;
+            }
+
+            true
         }
         RuleBody::Normal(matchers) => {
             let mut matches = Vec::new();
             let mut bindings = HashMap::new();
 
             // loop through all the matchers
-            'matchers: for matcher in matchers.iter() {
+            'normal_matchers: for matcher in matchers.iter() {
                 // and for each matcher, loop through each slice.
                 for slice_ix in 0..max_slice_index {
                     let cells = grid::Slice {
@@ -296,7 +326,7 @@ fn apply_rule_body(
                         Some((match_, match_bindings)) => {
                             bindings.extend(match_bindings);
                             matches.push(match_);
-                            continue 'matchers;
+                            continue 'normal_matchers;
                         }
                     }
                 }
@@ -318,13 +348,9 @@ fn apply_rule_body(
 fn apply_rule(
     properties: &HashMap<PropertyName, HashSet<ObjectName>>,
     stage: &mut Stage,
+    commands: &mut Vec<RuleCommand>,
     rule: &Rule,
 ) -> bool {
-    match rule.command {
-        None => (),
-        Some(_) => panic!("TODO rule command"),
-    }
-
     let (axis, reversed) = match rule.direction {
         RuleDirection::Down => (grid::SliceAxis::Col, false),
         RuleDirection::Up => (grid::SliceAxis::Col, true),
@@ -332,15 +358,19 @@ fn apply_rule(
         RuleDirection::Left => (grid::SliceAxis::Row, true),
     };
 
-    apply_rule_body(
-        // rule.line_number,
-        properties, stage, axis, reversed, &rule.body,
-    )
+    let matched = apply_rule_body(properties, stage, axis, reversed, &rule.body);
+    if matched {
+        for command in rule.commands.clone() {
+            commands.push(command.clone());
+        }
+    };
+    matched
 }
 
 fn apply_rule_group(
     properties: &HashMap<PropertyName, HashSet<ObjectName>>,
     stage: &mut Stage,
+    commands: &mut Vec<RuleCommand>,
     rule_group: &RuleGroup,
 ) -> bool {
     if rule_group.random {
@@ -351,7 +381,7 @@ fn apply_rule_group(
     while keep_going {
         keep_going = false;
         for rule in rule_group.rules.iter() {
-            let matched = apply_rule(properties, stage, rule);
+            let matched = apply_rule(properties, stage, commands, rule);
             keep_going = keep_going || matched;
             any_matched = any_matched || matched;
         }
@@ -362,11 +392,12 @@ fn apply_rule_group(
 fn apply_rule_groups(
     properties: &HashMap<PropertyName, HashSet<ObjectName>>,
     stage: &mut Stage,
+    commands: &mut Vec<RuleCommand>,
     rule_groups: &[RuleGroup],
 ) -> bool {
     let mut any_matched = false;
     for rule_group in rule_groups {
-        let matched = apply_rule_group(properties, stage, rule_group);
+        let matched = apply_rule_group(properties, stage, commands, rule_group);
         any_matched = any_matched || matched;
     }
     any_matched
@@ -589,18 +620,21 @@ pub enum Advance {
 
 /// returns whether the winning conditions were satisfied
 pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
-    // println!("# Advance");
     let mut active = false;
-    // println!("## Rule");
-    active = apply_rule_groups(&game.properties, stage, &game.rules) || active;
-    // println!("## Movement");
+    let mut commands = Vec::new();
+    active = apply_rule_groups(&game.properties, stage, &mut commands, &game.rules) || active;
     active = apply_movement(&game.collision_layers, stage) || active;
-    // println!("## Late rules");
-    active = apply_rule_groups(&game.properties, stage, &game.late_rules) || active;
+    active = apply_rule_groups(&game.properties, stage, &mut commands, &game.late_rules) || active;
     if has_movement(stage) {
         panic!("Got movement after late rules!");
     };
-    // println!("## Check win");
+    for command in commands {
+        match command {
+            RuleCommand::Sound(_) => (), // TODO sounds
+            RuleCommand::Cancel => return Advance::Nothing,
+            command => panic!("TODO command: {:?}", command),
+        }
+    }
     let won = check_win_conditions(&game.win_conditions, stage);
     if won {
         Advance::Won
