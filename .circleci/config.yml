@@ -1,0 +1,25 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: bitonic123/puzzlescript-rs:20181223-1
+    steps:
+      - run:
+          name: Print rust versions
+          command: rustc --version && cargo --version
+      - run:
+          name: Install additional rust components
+          command: rustup component add rustfmt-preview
+      - checkout
+      - run:
+          name: fmt check
+          command: cargo fmt --all -- --check
+      - run:
+          name: Build
+          command: cargo build
+      - run:
+          name: Test
+          command: cargo test
+      - run:
+          name: Doc
+          command: cargo doc
