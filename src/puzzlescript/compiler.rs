@@ -93,8 +93,7 @@ fn simplify_rule_direction(rule: &ast::Rule) -> Vec<ast::Rule> {
     let with_direction_and_body = |direction, body| ast::Rule {
         direction: Some(direction),
         body: body,
-        sounds: rule.sounds.clone(),
-        command: rule.command.clone(),
+        commands: rule.commands.clone(),
         line_number: rule.line_number,
     };
 
@@ -992,8 +991,7 @@ impl<'a> CompileState<'a> {
         let with_body = |body| Rule {
             direction,
             body,
-            sounds: rule.sounds.clone(),
-            command: rule.command.clone(),
+            commands: rule.commands.clone(),
             line_number: rule.line_number,
         };
         let property_counter = &mut 0;

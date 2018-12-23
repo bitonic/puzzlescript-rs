@@ -1,5 +1,4 @@
 // TODO change from Normal / Ellipsis to separate LHS and RHS
-use crate::math::*;
 use crate::puzzlescript::colors::*;
 use crate::puzzlescript::grid::*;
 use std::collections::{HashMap, HashSet};
@@ -32,16 +31,12 @@ pub type EntityName = Rc<str>;
 #[derive(Debug, PartialEq, Clone)]
 pub enum Object {
     Empty(Color),
-    Normal(Matrix5<Color>),
+    Normal(Grid<Color>),
 }
 
 impl Object {
     pub fn normal(lines: &Vec<Vec<Color>>) -> Object {
-        let rows: Vec<RowVector5<Color>> = lines
-            .iter()
-            .map(|line| RowVector5::from_row_slice(&line))
-            .collect();
-        Object::Normal(Matrix5::from_rows(&rows))
+        Object::Normal(Grid::generate(5, 5, |(row, col)| lines[row][col]))
     }
 
     pub fn empty(color: Color) -> Object {
@@ -100,6 +95,7 @@ pub type Matcher<RHS> = Vec<CellMatcher<RHS>>;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum RuleCommand {
     Message(String),
+    Sound(SoundFx),
     Cancel,
     Restart,
     Again,
@@ -116,8 +112,7 @@ pub struct Rule {
     pub line_number: usize, // for debugging
     pub direction: Option<RuleDirection>,
     pub body: RuleBody,
-    pub sounds: Vec<SoundFx>,
-    pub command: Option<RuleCommand>,
+    pub commands: Vec<RuleCommand>,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
