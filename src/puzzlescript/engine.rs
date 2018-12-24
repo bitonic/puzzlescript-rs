@@ -90,7 +90,7 @@ fn qualifier_to_movement(qualifier: Qualifier) -> Option<Movement> {
 }
 
 struct MatchedCells<'a, RHS> {
-  matchers: &'a [CellMatcher<RHS>],
+  cell_matchers: &'a [CellMatcher<RHS>],
   /// in what slice of the stage we matched
   slice_desc: grid::SliceDesc,
   /// at which points of the slice each non-ellipsis matcher matched
@@ -106,7 +106,7 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
       grid: stage,
       desc: self.slice_desc,
     };
-    for matcher in self.matchers {
+    for matcher in self.cell_matchers {
       match matcher {
         CellMatcher::Ellipsis => (),
         CellMatcher::Objects(ref lhs_entities, ref rhs_entities) => {
@@ -231,7 +231,7 @@ fn match_cells<'a, 'b, RHS>(
     return Some((
       MatchedCells {
         matches,
-        matchers,
+        cell_matchers: matchers,
         slice_desc: cells.desc,
       },
       bindings,
@@ -241,24 +241,41 @@ fn match_cells<'a, 'b, RHS>(
   None
 }
 
-fn apply_rule_body(
-  // rule_line_number: usize,
+struct MatchedCellsCandidate<'a> {
+  /// what slice matched
+  matched_slice_ix: usize,
+  /// we've already checked all the remaining slices
+  exhausted: bool,
+  matched_cells: MatchedCells<'a, Objects<RHSEntity>>,
+  bindings: PropertyBindings,
+}
+
+/// returns whether the rule body could be applied. here "could be applied"
+/// means:
+///
+/// * For normal rule bodies, that they matched and that applying them changed
+///   something;
+/// * For "no consequence" rule bodies, that they matched.
+fn apply_rule_body<'a>(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   stage: &mut Stage,
   axis: grid::SliceAxis,
   reversed: bool,
-  rule_body: &RuleBody,
+  rule_body: &'a RuleBody,
 ) -> bool {
-  let max_slice_index = match axis {
+  let available_slices = match axis {
     grid::SliceAxis::Row => stage.nrows(),
     grid::SliceAxis::Col => stage.ncols(),
   };
   match rule_body {
     RuleBody::NoConsequence(matchers) => {
+      // note that for no consequence rules, there is no notion of "changing"
+      // the stage or not, so we consider any rule that matches at all as applied.
+
       // loop through all the matchers
       'no_consequence_matchers: for matcher in matchers.iter() {
         // and for each matcher, loop through each slice.
-        for slice_ix in 0..max_slice_index {
+        for slice_ix in 0..available_slices {
           let cells = grid::Slice {
             desc: grid::SliceDesc {
               axis,
@@ -271,10 +288,9 @@ fn apply_rule_body(
           // note that we do not need to "backtrack" if subsequent matchers
           // do not match, since matchers can never influence each other.
           //
-          // in other words, if we're trying to match matcher `A` and then
-          // matcher `B`, if matcher `A` matched with some configuration and
-          // matcher `B` does not, matcher `B` will never match regardless
-          // of the configuration we have picked for `A`.
+          // moreover, in "no consequence" matchers we know we are done as
+          // soon as something matches -- we do not have to check if we
+          // changed something or not.
           match match_cells(/* rule_line_number, */ properties, &cells, matcher) {
             None => (),
             Some(_) => continue 'no_consequence_matchers,
@@ -288,13 +304,25 @@ fn apply_rule_body(
       true
     }
     RuleBody::Normal(matchers) => {
-      let mut matches = Vec::new();
-      let mut bindings = HashMap::new();
+      // for normal matchers we must try all possible configurations until
+      // we find on that not only matches, but that it also changes something.
+      //
+      // however, we can still avoid copying the stage, since as soon as a matching
+      // rule changes something we exit.
+      //
+      // if nothing change once we find a configuration, we go through the matches
+      // left-to-right and try to find a new slice that matches.
+      //
+      // note: matchers may overlap, which makes the semantics of "rule application"
+      // quite gnarly. here we ignore the issue (as puzzlescript does as far as i can
+      // tell), and we assume throughout the matching that they never influence each
+      // other.
 
-      // loop through all the matchers
+      let mut matches: Vec<MatchedCellsCandidate<'a>> = Vec::with_capacity(matchers.len());
+
+      // first, fill in the matches with the first candidates (if any)
       'normal_matchers: for matcher in matchers.iter() {
-        // and for each matcher, loop through each slice.
-        for slice_ix in 0..max_slice_index {
+        for slice_ix in 0..available_slices {
           let cells = grid::Slice {
             desc: grid::SliceDesc {
               axis,
@@ -303,34 +331,97 @@ fn apply_rule_body(
             },
             grid: stage,
           };
-          // if we match, greedily choose this match and go to next matcher.
-          // note that we do not need to "backtrack" if subsequent matchers
-          // do not match, since matchers can never influence each other.
-          //
-          // in other words, if we're trying to match matcher `A` and then
-          // matcher `B`, if matcher `A` matched with some configuration and
-          // matcher `B` does not, matcher `B` will never match regardless
-          // of the configuration we have picked for `A`.
-          match match_cells(/* rule_line_number, */ properties, &cells, matcher) {
+          match match_cells(properties, &cells, matcher) {
             None => (),
-            Some((match_, match_bindings)) => {
-              bindings.extend(match_bindings);
-              matches.push(match_);
+            Some((matched_cells, bindings)) => {
+              matches.push(MatchedCellsCandidate {
+                matched_slice_ix: slice_ix,
+                exhausted: slice_ix == available_slices - 1,
+                matched_cells,
+                bindings,
+              });
               continue 'normal_matchers;
             }
           }
         }
 
-        // we could not match this matcher in any way. give up.
+        // we could not match this matcher in any way. give up directly.
         return false;
       }
 
-      // every matcher matches -- now apply
-      let mut something_changed = false;
-      for match_ in matches.iter() {
-        something_changed = match_.apply(&bindings, stage) || something_changed;
+      // now, loop until we find a configuration that changes something, or
+      // when you've exhausted all configurations
+      loop {
+        // first check if the current configuration changes something
+        let overall_bindings: PropertyBindings = matches
+          .iter()
+          .flat_map(|candidate| {
+            candidate
+              .bindings
+              .iter()
+              .map(|(binder, object)| (*binder, object.clone()))
+          })
+          .collect();
+        let something_changed = matches
+          .iter()
+          .any(|candidate| candidate.matched_cells.apply(&overall_bindings, stage));
+
+        // if something _did_ change, we're done
+        if something_changed {
+          return true;
+        }
+
+        // otherwise, try to find a new configuration
+        let mut new_matches = Vec::with_capacity(matches.len());
+        let mut new_configuration = false;
+        'candidates: for candidate in matches.into_iter() {
+          // just keep going if we already found something new or if we've alread
+          // looked through all the slices
+          if new_configuration || candidate.exhausted {
+            new_matches.push(candidate);
+          } else {
+            for slice_ix in (candidate.matched_slice_ix + 1)..available_slices {
+              let cells = grid::Slice {
+                desc: grid::SliceDesc {
+                  axis,
+                  reversed,
+                  index: slice_ix,
+                },
+                grid: stage,
+              };
+              match match_cells(properties, &cells, candidate.matched_cells.cell_matchers) {
+                None => (),
+                Some((matched_cells, bindings)) => {
+                  // we found a new configuration
+                  new_configuration = true;
+                  new_matches.push(MatchedCellsCandidate {
+                    matched_slice_ix: slice_ix,
+                    exhausted: slice_ix == available_slices - 1,
+                    matched_cells,
+                    bindings,
+                  });
+                  continue 'candidates;
+                }
+              }
+            }
+
+            // we didn't find anything new, just push the old match again --
+            // but mark it as exhausted
+            new_matches.push(MatchedCellsCandidate {
+              matched_slice_ix: candidate.matched_slice_ix,
+              exhausted: true,
+              matched_cells: candidate.matched_cells,
+              bindings: candidate.bindings,
+            });
+          }
+        }
+        // if we didn't find anything new, give up
+        if !new_configuration {
+          return false;
+        }
+        // otherwise, keep looping with the new matches
+        matches = new_matches;
       }
-      something_changed
     }
   }
 }
