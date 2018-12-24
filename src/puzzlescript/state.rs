@@ -161,17 +161,11 @@ impl<'a> State<'a> {
   pub fn update(&mut self, dt: Duration, mb_command: Option<Command>) {
     self.time += dt;
 
-    match self.status {
-      Status::FlashWonLevel { start, .. } => {
-        if self.time - start > *FLASH_WON_LEVEL {
-          if self.has_next_level() {
-            self.status = Status::Playing;
-            self.reset_and_push_level(self.last_state().level_number + 1);
-          }
-        }
+    if let Status::FlashWonLevel { start, .. } = self.status {
+      if self.time - start > *FLASH_WON_LEVEL && self.has_next_level() {
+        self.status = Status::Playing;
+        self.reset_and_push_level(self.last_state().level_number + 1);
       }
-      Status::Playing => (),
-      Status::Won { .. } => (),
     }
 
     // if we're _not_ winning, execute command

@@ -67,7 +67,7 @@ pub enum TextureParameter {
 }
 
 impl TextureParameter {
-  fn apply(&self, gl: &gl::Gl) {
+  fn apply(self, gl: &gl::Gl) {
     match self {
       TextureParameter::WrapS(wrap) => {
         gl.tex_parameter_i(gl::TEXTURE_2D, gl::TEXTURE_WRAP_S, wrap.param())
@@ -107,6 +107,7 @@ impl<'gl> Texture<'gl> {
   /// The input image is not touched before being turned into a texture, so you
   /// probably need to `DynamicImage.flipv` to put it in OpenGL texture
   /// coordinates.
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(
     gl: &'gl gl::Gl,
     params: &[TextureParameter],
@@ -141,7 +142,7 @@ impl<'gl> Texture<'gl> {
       format,
       gl::UNSIGNED_BYTE,
       // space character has no length
-      if img_bytes.len() == 0 {
+      if img_bytes.is_empty() {
         None
       } else {
         Some(&img_bytes)

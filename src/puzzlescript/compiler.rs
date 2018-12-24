@@ -44,6 +44,7 @@ where
 }
 */
 
+#[allow(clippy::ptr_arg)]
 fn big_cross_product_op<A, B, F>(empty: B, op: F, xss: &Vec<Vec<A>>) -> Vec<B>
 where
   A: Clone,
@@ -76,6 +77,7 @@ where
   result
 }
 
+#[allow(clippy::ptr_arg)]
 fn big_cross_product<A>(xss: &Vec<Vec<A>>) -> Vec<Vec<A>>
 where
   A: Clone,
@@ -84,7 +86,7 @@ where
 }
 
 fn rule_is_symmetric(_rule: &ast::Rule) -> bool {
-  return false; // TODO
+  false // TODO
 }
 
 fn simplify_rule_direction(rule: &ast::Rule) -> Vec<ast::Rule> {
@@ -92,7 +94,7 @@ fn simplify_rule_direction(rule: &ast::Rule) -> Vec<ast::Rule> {
 
   let with_direction_and_body = |direction, body| ast::Rule {
     direction: Some(direction),
-    body: body,
+    body,
     commands: rule.commands.clone(),
     line_number: rule.line_number,
   };
@@ -205,11 +207,9 @@ impl LHSInfo {
     match self.entities.entry(entity.clone()) {
       im_hashmap::Entry::Vacant(vacant) => {
         vacant.insert(Unique(entity_info.clone()));
-        ()
       }
       im_hashmap::Entry::Occupied(mut occupied) => {
         occupied.insert(Ambiguous);
-        ()
       }
     }
   }
@@ -227,11 +227,9 @@ impl LHSInfo {
           entity_info: entity_info.clone(),
         };
         vacant.insert(Unique(info));
-        ()
       }
       im_hashmap::Entry::Occupied(mut occupied) => {
         occupied.insert(Ambiguous);
-        ()
       }
     }
   }
@@ -241,7 +239,6 @@ impl LHSInfo {
       match mb_entity_info {
         Ambiguous => {
           self.entities.insert(entity.clone(), Ambiguous);
-          ()
         }
         Unique(entity_info) => self.insert_entity(entity, entity_info),
       }
@@ -251,7 +248,6 @@ impl LHSInfo {
       match mb_entity {
         Ambiguous => {
           self.qualifiers.insert(*qualifier, Ambiguous);
-          ()
         }
         Unique(qualifier_info) => self.insert_qualifier(
           *qualifier,
@@ -277,6 +273,7 @@ impl LHSInfo {
   }
 }
 
+#[allow(clippy::ptr_arg)]
 fn big_cross_product_lhs_info<A>(xss: &Vec<Vec<(LHSInfo, A)>>) -> Vec<(LHSInfo, Vec<A>)>
 where
   A: Clone,
@@ -617,7 +614,7 @@ impl<'a> CompileState<'a> {
     &self,
     property_counter: &mut usize,
     rule_direction: RuleDirection,
-    match_entities: &Vec<ast::MatchEntity>,
+    match_entities: &[ast::MatchEntity],
   ) -> Vec<(LHSInfo, Vec<LHSEntity>)> {
     big_cross_product_op(
       (LHSInfo::new(), Vec::new()),
@@ -640,7 +637,7 @@ impl<'a> CompileState<'a> {
     &self,
     property_counter: &mut usize,
     rule_direction: RuleDirection,
-    matchers: &Vec<ast::Matcher<()>>,
+    matchers: &[ast::Matcher<()>],
   ) -> Vec<Vec<Matcher<()>>> {
     big_cross_product(
       &matchers
@@ -669,7 +666,7 @@ impl<'a> CompileState<'a> {
     rule_direction: RuleDirection,
     overall_lhs_info: &LHSInfo,
     cell_lhs_info: &LHSInfo,
-    entities: &Vec<ast::MatchEntity>,
+    entities: &[ast::MatchEntity],
   ) -> Objects<RHSEntity> {
     Rc::new(
       entities
@@ -770,7 +767,7 @@ impl<'a> CompileState<'a> {
                                     .map(|object| {
                                       RHSEntity::Object(QualifiedObject {
                                         object: object.clone(),
-                                        qualifier: qualifier,
+                                        qualifier,
                                       })
                                     })
                                     .collect(),
@@ -879,7 +876,7 @@ impl<'a> CompileState<'a> {
     &self,
     property_counter: &mut usize,
     rule_direction: RuleDirection,
-    matchers: &Vec<ast::Matcher<Vec<ast::MatchEntity>>>,
+    matchers: &[ast::Matcher<Vec<ast::MatchEntity>>],
   ) -> Vec<Vec<Matcher<Objects<RHSEntity>>>> {
     // first collect all the LHS properties
     let with_lhs_properties = big_cross_product_lhs_info(

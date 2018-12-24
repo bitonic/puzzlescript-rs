@@ -56,6 +56,7 @@ impl<'gl> Geometry<'gl> {
   /// * A `"pos"` `vec2` input;
   /// * A `"tex_coord"` input if `GeometrySpec::Textured`.
   /// * A `"color"` input if `GeometrySpec::Colored`.
+  #[allow(clippy::new_ret_no_self)]
   pub fn new<'a>(
     gl: &'gl gl::Gl,
     shader: Rc<Shader<'gl>>,
