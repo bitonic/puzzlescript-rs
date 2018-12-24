@@ -13,11 +13,11 @@ jobs:
           RUSTFLAGS: "-C debuginfo=0 -C link-args=-fuse-ld=lld -D warnings"
     steps:
       - run:
-          name: Print rust versions
-          command: rustc --version && cargo --version
-      - run:
           name: Install additional rust components
           command: rustup component add rustfmt clippy
+      - run:
+          name: Print rust versions
+          command: rustc --version && cargo --version && cargo fmt -- --version && cargo clippy -- --version
       - checkout
       - run:
           name: fmt check
