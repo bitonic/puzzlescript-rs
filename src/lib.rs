@@ -16,5 +16,5 @@ pub mod puzzlescript;
 pub mod render;
 
 pub fn run() -> Result<(), failure::Error> {
-    puzzlescript::run(puzzlescript::Opts::from_args())
+  puzzlescript::run(puzzlescript::Opts::from_args())
 }
