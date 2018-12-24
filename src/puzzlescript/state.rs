@@ -131,6 +131,11 @@ impl<'a> State<'a> {
               };
             }
           }
+          engine::Advance::Restart => {
+            // do not reset when restarting -- we want to be able to
+            // undo beyond the restart
+            self.push_level(last_state.level_number);
+          }
           engine::Advance::Active =>
           // otherwise keep going
           {

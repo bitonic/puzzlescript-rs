@@ -354,11 +354,11 @@ fn apply_rule(
     for command in rule.commands.clone() {
       commands.push(command.clone());
       // exit early on cancel, since the original puzzlescript allows
-      // you to write rules that match forever + cancel
+      // you to write rules that match forever + cancel or restart
       //
       // TODO Have this to be more structured, go all the way up with
-      // an explicit Cancel rather than a boolean
-      if command == RuleCommand::Cancel {
+      // an explicit Cancel / Restart rather than a boolean
+      if command == RuleCommand::Cancel || command == RuleCommand::Restart {
         return false;
       }
     }
@@ -591,6 +591,8 @@ pub enum Advance {
   Active,
   /// We've won the current stage
   Won,
+  /// We need to restart the level
+  Restart,
 }
 
 /// returns whether the winning conditions were satisfied
@@ -610,6 +612,7 @@ pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
     match command {
       RuleCommand::Sound(_) => (), // TODO sounds
       RuleCommand::Cancel => return Advance::Nothing,
+      RuleCommand::Restart => return Advance::Restart,
       command => panic!("TODO command: {:?}", command),
     }
   }
