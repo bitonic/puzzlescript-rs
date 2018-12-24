@@ -21,7 +21,6 @@ fn match_qualifier(qualifier: Qualifier, movement: Movement) -> bool {
 
 /// `Some` if it could match, with the bound properties (if any).
 fn match_cell(
-  // rule_line_number: usize,
   properties: &HashMap<PropertyName, HashSet<PropertyName>>,
   cell: &im_hashmap::HashMap<ObjectName, Movement>,
   matcher: &Objects<LHSEntity>,
@@ -171,7 +170,6 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
 }
 
 fn match_cells<'a, 'b, RHS>(
-  // rule_line_number: usize,
   properties: &HashMap<PropertyName, HashSet<PropertyName>>,
   cells: &grid::Slice<'a, Cell>,
   matchers: &'b [CellMatcher<RHS>],
@@ -199,12 +197,7 @@ fn match_cells<'a, 'b, RHS>(
           after_ellipsis = true;
         }
         CellMatcher::Objects(ref lhs_objects, _) => {
-          match match_cell(
-            // rule_line_number,
-            properties,
-            &cells[cell_cursor],
-            lhs_objects,
-          ) {
+          match match_cell(properties, &cells[cell_cursor], lhs_objects) {
             None => {
               if after_ellipsis {
                 // if we're after an ellipsis, just go to next cell
@@ -291,7 +284,7 @@ fn apply_rule_body<'a>(
           // moreover, in "no consequence" matchers we know we are done as
           // soon as something matches -- we do not have to check if we
           // changed something or not.
-          match match_cells(/* rule_line_number, */ properties, &cells, matcher) {
+          match match_cells(properties, &cells, matcher) {
             None => (),
             Some(_) => continue 'no_consequence_matchers,
           }
@@ -362,10 +355,12 @@ fn apply_rule_body<'a>(
               .map(|(binder, object)| (*binder, object.clone()))
           })
           .collect();
-        let something_changed = matches
-          .iter()
-          .any(|candidate| candidate.matched_cells.apply(&overall_bindings, stage));
-
+        let mut something_changed = false;
+        // don't replace with a fold, it's important that they all run
+        for candidate in matches.iter() {
+          something_changed =
+            candidate.matched_cells.apply(&overall_bindings, stage) || something_changed;
+        }
         // if something _did_ change, we're done
         if something_changed {
           return true;
