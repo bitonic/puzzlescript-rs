@@ -4,17 +4,16 @@ WIP
 
 # Running
 
-Install rustup and rust nightly
+Install rustup
 
 ```
 $ curl https://sh.rustup.rs -sSf | sh
-$ rustup install nightly
 ```
 
 then
 
 ```
-$ cargo +nightly run -- puzzlescripts/third_party/heroes_of_sokoban_1.pzl
+$ cargo run -- puzzlescripts/third_party/heroes_of_sokoban_1.pzl
 ```
 
 The only external dependencies are FreeType and OpenGL.
