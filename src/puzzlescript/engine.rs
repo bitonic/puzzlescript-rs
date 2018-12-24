@@ -176,15 +176,7 @@ fn match_cells<'a, 'b, RHS>(
   cells: &grid::Slice<'a, Cell>,
   matchers: &'b [CellMatcher<RHS>],
 ) -> Option<(MatchedCells<'b, RHS>, PropertyBindings)> {
-  let mut min_len = 0;
-  for matcher in matchers {
-    match matcher {
-      CellMatcher::Ellipsis => (),
-      CellMatcher::Objects(_, _) => min_len += 1,
-    }
-  }
-
-  'outer: for start in 0..(cells.len() - min_len) {
+  'outer: for start in 0..cells.len() {
     // stores where we matched for non-Ellipsis entities
     let mut matches: Vec<usize> = Vec::new();
     let mut cell_cursor = start;
