@@ -5,20 +5,20 @@ pub static DEBUG_LOGGING: AtomicBool = AtomicBool::new(false);
 
 pub fn _debug_log<F>(get_s: F)
 where
-    F: FnOnce() -> String,
+  F: FnOnce() -> String,
 {
-    if DEBUG_LOGGING.load(Ordering::Relaxed) {
-        eprint!("{}\n", get_s());
-    }
+  if DEBUG_LOGGING.load(Ordering::Relaxed) {
+    eprint!("{}\n", get_s());
+  }
 }
 
 pub fn _verbose_log<F>(get_s: F)
 where
-    F: FnOnce() -> String,
+  F: FnOnce() -> String,
 {
-    if VERBOSE_LOGGING.load(Ordering::Relaxed) {
-        eprint!("{}\n", get_s());
-    }
+  if VERBOSE_LOGGING.load(Ordering::Relaxed) {
+    eprint!("{}\n", get_s());
+  }
 }
 
 #[macro_export]

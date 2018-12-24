@@ -4,5 +4,5 @@ extern crate puzzlescript;
 use puzzlescript::*;
 
 fn main() {
-    run().unwrap()
+  run().unwrap()
 }
