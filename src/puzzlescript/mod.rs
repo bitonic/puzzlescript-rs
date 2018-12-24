@@ -135,7 +135,10 @@ pub fn run(opts: Opts) -> Result<(), Error> {
             Some(virtual_key) => match input.state {
               ElementState::Released => (),
               ElementState::Pressed => {
-                if virtual_key == VirtualKeyCode::Space || virtual_key == VirtualKeyCode::X {
+                if virtual_key == VirtualKeyCode::Space
+                  || virtual_key == VirtualKeyCode::Return
+                  || virtual_key == VirtualKeyCode::X
+                {
                   mb_command = Some(Command::Action);
                 }
                 if virtual_key == VirtualKeyCode::Up || virtual_key == VirtualKeyCode::W {
