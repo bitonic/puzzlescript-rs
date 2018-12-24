@@ -2,6 +2,7 @@ use crate::puzzlescript::engine;
 use crate::puzzlescript::game::*;
 use lazy_static::*;
 use std::time::Duration;
+use std::time::SystemTime;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 struct LevelState {
@@ -180,6 +181,7 @@ impl<'a> State<'a> {
       Status::Playing => match mb_command {
         None => (),
         Some(command) => {
+          let command_start_time = SystemTime::now();
           verbose_log!("====");
           verbose_log!("# Applying command {:?}", command);
           match command {
@@ -199,6 +201,9 @@ impl<'a> State<'a> {
               self.push_level(self.last_state().level_number);
             }
           }
+          let command_time = command_start_time.elapsed().unwrap();
+          let command_time_millis = command_time.as_secs() as f64 * 1000.0 + command_time.subsec_millis() as f64;
+          debug_log!("# Command cleared in {}ms", command_time_millis);
         }
       },
     }
