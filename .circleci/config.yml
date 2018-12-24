@@ -17,11 +17,14 @@ jobs:
           command: rustc --version && cargo --version
       - run:
           name: Install additional rust components
-          command: rustup component add rustfmt-preview
+          command: rustup component add rustfmt clippy
       - checkout
       - run:
           name: fmt check
           command: cargo fmt --all -- --check
+      - run:
+          name: clippy
+          command: cargo clippy -- -D warnings
       - run:
           name: Build
           command: cargo build

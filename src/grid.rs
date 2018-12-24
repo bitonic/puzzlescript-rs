@@ -81,7 +81,7 @@ impl<A> Index<(usize, usize)> for Grid<A> {
 }
 
 impl<A> IndexMut<(usize, usize)> for Grid<A> {
-  fn index_mut<'a>(&'a mut self, pos: (usize, usize)) -> &'a mut A {
+  fn index_mut(&mut self, pos: (usize, usize)) -> &mut A {
     let ix = self.internal_index(pos.0, pos.1);
     &mut self.cells[ix]
   }
@@ -93,8 +93,9 @@ pub enum SliceAxis {
   Col,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl SliceAxis {
-  pub fn len<A>(&self, grid: &Grid<A>) -> usize {
+  pub fn len<A>(self, grid: &Grid<A>) -> usize {
     match self {
       SliceAxis::Row => grid.ncols(),
       SliceAxis::Col => grid.nrows(),
@@ -160,6 +161,7 @@ pub struct Slice<'a, A> {
   pub desc: SliceDesc,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<'a, A> Slice<'a, A> {
   pub fn len(&self) -> usize {
     self.desc.axis.len(self.grid)
@@ -179,6 +181,7 @@ pub struct SliceMut<'a, A> {
   pub desc: SliceDesc,
 }
 
+#[allow(clippy::len_without_is_empty)]
 impl<'a, A> SliceMut<'a, A> {
   pub fn len(&self) -> usize {
     self.desc.axis.len(self.grid)

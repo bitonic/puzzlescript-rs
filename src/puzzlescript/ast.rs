@@ -36,7 +36,7 @@ pub enum Object {
 }
 
 impl Object {
-  pub fn normal(lines: &Vec<Vec<Color>>) -> Object {
+  pub fn normal(lines: &[Vec<Color>]) -> Object {
     Object::Normal(Grid::generate(5, 5, |(row, col)| lines[row][col]))
   }
 

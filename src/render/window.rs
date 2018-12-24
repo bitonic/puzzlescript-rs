@@ -29,8 +29,8 @@ pub fn init(
   // We set the minimum size to 720p physical for ease of testing
   if set_min_window_size {
     let min_dims = LogicalSize::new(
-      MIN_WINDOW_WIDTH as f64 / gl_window.get_hidpi_factor(),
-      MIN_WINDOW_HEIGHT as f64 / gl_window.get_hidpi_factor(),
+      f64::from(MIN_WINDOW_WIDTH) / gl_window.get_hidpi_factor(),
+      f64::from(MIN_WINDOW_HEIGHT) / gl_window.get_hidpi_factor(),
     );
     gl_window.set_inner_size(min_dims);
     gl_window.set_min_dimensions(Some(min_dims));
@@ -57,18 +57,16 @@ pub fn init(
 /// Automatically handles resize events. Forwards the event untouched
 /// to the callback (including resize events).
 pub fn handle_resize_events(gl_window: &GlWindow, gl: &gl::Gl, event: &Event) {
-  match event {
-    Event::WindowEvent { ref event, .. } => match event {
-      WindowEvent::Resized(window_size) => {
-        let hidpi_factor = gl_window.get_hidpi_factor();
-        let phys_size = window_size.to_physical(hidpi_factor);
-        gl_window.resize(phys_size);
+  if let Event::WindowEvent {
+    event: WindowEvent::Resized(window_size),
+    ..
+  } = event
+  {
+    let hidpi_factor = gl_window.get_hidpi_factor();
+    let phys_size = window_size.to_physical(hidpi_factor);
+    gl_window.resize(phys_size);
 
-        gl.viewport(0, 0, phys_size.width as i32, phys_size.height as i32);
-      }
-      _ => (),
-    },
-    _ => (),
+    gl.viewport(0, 0, phys_size.width as i32, phys_size.height as i32);
   }
 }
 

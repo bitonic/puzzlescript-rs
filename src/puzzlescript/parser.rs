@@ -23,14 +23,14 @@ enum Section {
 impl fmt::Display for Section {
   fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
     match self {
-      Section::Prelude => write!(f, "{}", "PRELUDE"),
-      Section::Objects => write!(f, "{}", "OBJECTS"),
-      Section::Legend => write!(f, "{}", "LEGEND"),
-      Section::Sounds => write!(f, "{}", "SOUNDS"),
-      Section::CollisionLayers => write!(f, "{}", "COLLISIONLAYERS"),
-      Section::Rules => write!(f, "{}", "RULES"),
-      Section::WinConditions => write!(f, "{}", "WINCONDITIONS"),
-      Section::Levels => write!(f, "{}", "LEVELS"),
+      Section::Prelude => write!(f, "PRELUDE"),
+      Section::Objects => write!(f, "OBJECTS"),
+      Section::Legend => write!(f, "LEGEND"),
+      Section::Sounds => write!(f, "SOUNDS"),
+      Section::CollisionLayers => write!(f, "COLLISIONLAYERS"),
+      Section::Rules => write!(f, "RULES"),
+      Section::WinConditions => write!(f, "WINCONDITIONS"),
+      Section::Levels => write!(f, "LEVELS"),
     }
   }
 }
@@ -116,7 +116,7 @@ fn is_entity_name_symbol(ch: char) -> bool {
 fn parse_color(str: &str) -> Result<Color, ErrorMsg> {
   let fail = Err(format!("Invalid color: {}", str));
 
-  if str.len() == 0 {
+  if str.is_empty() {
     return fail;
   }
 
@@ -143,7 +143,7 @@ fn parse_color(str: &str) -> Result<Color, ErrorMsg> {
       Err(format!("Invalid hex color: {}", str))
     }
   } else {
-    match str.as_ref() {
+    match str {
       "black" => Ok(Color::Named(NamedColor::Black)),
       "white" => Ok(Color::Named(NamedColor::White)),
       "lightgray" | "lightgrey" => Ok(Color::Named(NamedColor::LightGray)),
@@ -318,7 +318,7 @@ impl<'a> ParseState<'a> {
       local_cursor += 1;
     }
 
-    if good_chars.len() >= 1 {
+    if !good_chars.is_empty() {
       self.cursor = local_cursor;
       self.discard_spaces()?;
       Ok(Some(good_chars))
@@ -567,7 +567,7 @@ impl<'a> ParseState<'a> {
       }
     }
 
-    if lines.len() == 0 || lines.len() == 5 {
+    if lines.is_empty() || lines.len() == 5 {
       Ok(lines)
     } else {
       Err(format!("Expected 5 lines for object, got {}", lines.len()))
@@ -593,7 +593,7 @@ impl<'a> ParseState<'a> {
 
     self.discard_spaces()?;
     let colors = self.lex_many(|st| st.lex_color())?;
-    if colors.len() < 1 {
+    if colors.is_empty() {
       return Err(format!("No colors specified for object {}", name));
     }
     self.assert_end_of_line(&format!("colors for object {}", name))?;
@@ -605,12 +605,13 @@ impl<'a> ParseState<'a> {
         return Err(format!("Lines for object {} have uneven size", name));
       }
     }
-    if !lines.iter().all(|line| {
+    let check_line_colors = |line: &Vec<Option<u8>>| {
       line.iter().all(|mb_ix| match mb_ix {
         None => true,
         Some(ix) => (*ix as usize) < colors.len(),
       })
-    }) {
+    };
+    if !lines.iter().all(check_line_colors) {
       return Err(format!(
         "Lines for object {} have out of bound colors",
         name
@@ -817,21 +818,20 @@ impl<'a> ParseState<'a> {
   }
 
   fn lex_sound_fx(&mut self) -> Result<Option<SoundFx>, ErrorMsg> {
-    if self.peek_str("sfx") {
-      if satisfies_char(&self.chars, self.cursor + 3, &|ch| ch.is_digit(10)) {
-        self.cursor += 3;
-        let ix_str: String = self
-          .lex_satisfy(&|ch| ch.is_digit(10))?
-          .unwrap()
-          .iter()
-          .collect();
-        return match u8::from_str_radix(ix_str.as_ref(), 10) {
-          Ok(ix) if ix <= 10 => Ok(Some(ix)),
-          _ => Err(format!("Invalid sound fx sfx{}", ix_str)),
-        };
+    if self.peek_str("sfx") && satisfies_char(&self.chars, self.cursor + 3, &|ch| ch.is_digit(10)) {
+      self.cursor += 3;
+      let ix_str: String = self
+        .lex_satisfy(&|ch| ch.is_digit(10))?
+        .unwrap()
+        .iter()
+        .collect();
+      match u8::from_str_radix(ix_str.as_ref(), 10) {
+        Ok(ix) if ix <= 10 => Ok(Some(ix)),
+        _ => Err(format!("Invalid sound fx sfx{}", ix_str)),
       }
+    } else {
+      Ok(None)
     }
-    Ok(None)
   }
 
   fn rule_cell(&mut self) -> Result<(CellMatcher<()>, Vec<SoundFx>), ErrorMsg> {
@@ -874,10 +874,8 @@ impl<'a> ParseState<'a> {
       let mut first = true;
 
       while !self.lex_token("]")? {
-        if !first {
-          if !self.lex_token("|")? {
-            return Err("Expecting | after entity not followed by ]".to_string());
-          }
+        if !first && !self.lex_token("|")? {
+          return Err("Expecting | after entity not followed by ]".to_string());
         }
         first = false;
 
@@ -887,7 +885,7 @@ impl<'a> ParseState<'a> {
       }
 
       // if we got nothing, it's one empty cell.
-      if cells.len() == 0 {
+      if cells.is_empty() {
         cells.push(CellMatcher::Entities(Vec::new(), ()));
       }
 
@@ -897,6 +895,7 @@ impl<'a> ParseState<'a> {
     }
   }
 
+  #[allow(clippy::type_complexity)]
   fn rule_body(&mut self) -> Result<Option<(Vec<ParsedMatcher>, Vec<SoundFx>)>, ErrorMsg> {
     match self.rule_matcher()? {
       None => Ok(None),
@@ -950,6 +949,7 @@ impl<'a> ParseState<'a> {
     })
   }
 
+  #[allow(clippy::useless_let_if_seq)]
   fn rule_line(&mut self) -> Result<(), ErrorMsg> {
     let line_number = compute_source_loc(&self.chars, self.cursor).0;
 
@@ -994,12 +994,7 @@ impl<'a> ParseState<'a> {
       None => RuleBody::NoConsequence(lhs_matchers),
 
       Some((rhs_matchers, rhs_sounds)) => {
-        commands.append(
-          &mut rhs_sounds
-            .into_iter()
-            .map(|sound| RuleCommand::Sound(sound))
-            .collect(),
-        );
+        commands.append(&mut rhs_sounds.into_iter().map(RuleCommand::Sound).collect());
 
         let mut matchers = Vec::new();
 
@@ -1119,7 +1114,7 @@ impl<'a> ParseState<'a> {
       self.validate_entity_usage("level entity", &entity)?;
     }
 
-    if line.len() == 0 {
+    if line.is_empty() {
       Ok(None)
     } else {
       Ok(Some(line))
@@ -1192,8 +1187,8 @@ impl<'a> ParseState<'a> {
       }
 
       // switch mode if necessary
-      match self.lex_section_start()? {
-        Some(section) => match self.section.next() {
+      if let Some(section) = self.lex_section_start()? {
+        match self.section.next() {
           None => {
             return Err(format!(
               "Expecting no section after {:?}, but got {:?}.",
@@ -1213,8 +1208,7 @@ impl<'a> ParseState<'a> {
               ));
             }
           }
-        },
-        None => (),
+        }
       }
 
       // finally, parse line
@@ -1248,8 +1242,8 @@ pub struct ParseError {
 fn compute_source_loc(chars: &[char], cursor: usize) -> (usize, usize) {
   let mut line = 1;
   let mut column = 1;
-  for ix in 0..cursor {
-    if chars[ix] == '\n' {
+  for ch in chars.iter().take(cursor) {
+    if *ch == '\n' {
       line += 1;
       column = 1;
     } else {

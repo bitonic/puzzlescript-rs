@@ -50,12 +50,12 @@ pub enum ColorPalette {
   Whitingjp,
 }
 
-pub fn to_float_color(palette: ColorPalette, color: &Color) -> Vector4<f32> {
-  fn from_hex(hex: &Vector3<u8>) -> Vector4<f32> {
+pub fn to_float_color(palette: ColorPalette, color: Color) -> Vector4<f32> {
+  fn from_hex(hex: Vector3<u8>) -> Vector4<f32> {
     vec4(
-      hex[0] as f32 / 255.0,
-      hex[1] as f32 / 255.0,
-      hex[2] as f32 / 255.0,
+      f32::from(hex[0]) / 255.0,
+      f32::from(hex[1]) / 255.0,
+      f32::from(hex[2]) / 255.0,
       1.0,
     )
   }
@@ -390,7 +390,7 @@ pub fn to_float_color(palette: ColorPalette, color: &Color) -> Vector4<f32> {
           NamedColor::Pink => vec3(0xec, 0x2b, 0x8f),
         },
       };
-      from_hex(&hex)
+      from_hex(hex)
     }
   }
 }

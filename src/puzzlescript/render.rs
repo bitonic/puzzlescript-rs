@@ -19,6 +19,7 @@ pub struct ObjectShader<'gl> {
 }
 
 impl<'gl> ObjectShader<'gl> {
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(gl: &'gl gl::Gl) -> Result<ObjectShader<'gl>, Error> {
     Ok(ObjectShader {
       shader: Rc::new(Shader::new(
@@ -31,6 +32,7 @@ impl<'gl> ObjectShader<'gl> {
 }
 
 impl<'gl> ObjectSprite<'gl> {
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(
     gl: &'gl gl::Gl,
     shader: ObjectShader<'gl>,
@@ -39,7 +41,7 @@ impl<'gl> ObjectSprite<'gl> {
   ) -> Result<ObjectSprite<'gl>, Error> {
     match object {
       Object::Empty(pzl_color) => {
-        let color = to_float_color(palette, pzl_color);
+        let color = to_float_color(palette, *pzl_color);
         let geometry = Geometry::new(
           gl,
           shader.shader,
@@ -71,7 +73,7 @@ impl<'gl> ObjectSprite<'gl> {
 
         for row in 0..5 {
           for col in 0..5 {
-            let color = to_float_color(palette, &squares[(row, col)]);
+            let color = to_float_color(palette, squares[(row, col)]);
             let x = col as f32 * 0.2;
             let y = row as f32 * 0.2;
 
@@ -130,12 +132,14 @@ impl<'gl> ObjectSprite<'gl> {
   }
 }
 
+pub type ObjectSprites<'gl> = HashMap<ObjectName, ObjectSprite<'gl>>;
+
 pub fn draw_level<'gl>(
   window_size: &dpi::LogicalSize,
   color_palette: ColorPalette,
-  foreground_color: &Color,
+  foreground_color: Color,
   font: &mut Face<'gl>,
-  object_sprites: &HashMap<ObjectName, ObjectSprite<'gl>>,
+  object_sprites: &ObjectSprites<'gl>,
   collision_layers: &[CollisionLayer],
   level: &Level,
 ) -> Result<(), Error> {

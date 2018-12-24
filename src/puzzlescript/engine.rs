@@ -32,7 +32,7 @@ fn match_cell(
     match lhs_entity {
       LHSEntity::Object(object) => match cell.get(&object.object) {
         None => {
-          if !(object.qualifier == Qualifier::No) {
+          if object.qualifier != Qualifier::No {
             return None;
           }
         }
@@ -90,7 +90,7 @@ fn qualifier_to_movement(qualifier: Qualifier) -> Option<Movement> {
 }
 
 struct MatchedCells<'a, RHS> {
-  matchers: &'a Vec<CellMatcher<RHS>>,
+  matchers: &'a [CellMatcher<RHS>],
   /// in what slice of the stage we matched
   slice_desc: grid::SliceDesc,
   /// at which points of the slice each non-ellipsis matcher matched
@@ -174,7 +174,7 @@ fn match_cells<'a, 'b, RHS>(
   // rule_line_number: usize,
   properties: &HashMap<PropertyName, HashSet<PropertyName>>,
   cells: &grid::Slice<'a, Cell>,
-  matchers: &'b Vec<CellMatcher<RHS>>,
+  matchers: &'b [CellMatcher<RHS>],
 ) -> Option<(MatchedCells<'b, RHS>, PropertyBindings)> {
   let mut min_len = 0;
   for matcher in matchers {
@@ -246,7 +246,7 @@ fn match_cells<'a, 'b, RHS>(
     ));
   }
 
-  return None;
+  None
 }
 
 fn apply_rule_body(

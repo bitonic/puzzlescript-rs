@@ -63,7 +63,7 @@ impl LayoutPosition {
 
     LayoutPosition {
       position: vec2(scaled_x / scale[0], scaled_y / scale[1]),
-      origin: origin,
+      origin,
     }
   }
 

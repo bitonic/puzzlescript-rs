@@ -26,6 +26,7 @@ pub struct Glyph<'gl> {
 }
 
 impl<'gl> Glyph<'gl> {
+  #[allow(clippy::new_ret_no_self)]
   fn new(
     gl: &'gl gl::Gl,
     face: &freetype::Face,
@@ -55,12 +56,12 @@ impl<'gl> Glyph<'gl> {
       metrics: GlyphMetrics {
         index,
         size: vec2(
-          bitmap.width() as f64 / hidpi_factor,
-          bitmap.rows() as f64 / hidpi_factor,
+          f64::from(bitmap.width()) / hidpi_factor,
+          f64::from(bitmap.rows()) / hidpi_factor,
         ),
         bearing: vec2(
-          glyph.bitmap_left() as f64 / hidpi_factor,
-          glyph.bitmap_top() as f64 / hidpi_factor,
+          f64::from(glyph.bitmap_left()) / hidpi_factor,
+          f64::from(glyph.bitmap_top()) / hidpi_factor,
         ),
         advance: (glyph.advance().x as f64 / 2_f64.powi(6)) / hidpi_factor,
       },
@@ -101,6 +102,7 @@ pub struct Face<'gl> {
 }
 
 impl<'gl> Face<'gl> {
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(
     gl: &'gl gl::Gl,
     face_bytes: Rc<Vec<u8>>,
@@ -111,7 +113,7 @@ impl<'gl> Face<'gl> {
     let freetype_lib = freetype::Library::init()?;
 
     let face = freetype_lib.new_memory_face(face_bytes, 0)?;
-    face.set_pixel_sizes(0, (pixel_height as f64 * hidpi_factor) as u32)?;
+    face.set_pixel_sizes(0, (f64::from(pixel_height) * hidpi_factor) as u32)?;
 
     let glyph_cache = GlyphCache {
       map: HashMap::new(),

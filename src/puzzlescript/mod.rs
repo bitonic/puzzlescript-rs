@@ -40,6 +40,7 @@ struct SizeState<'gl> {
 }
 
 impl<'gl> SizeState<'gl> {
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(gl_window: &glutin::GlWindow, gl: &'gl gl::Gl) -> Result<SizeState<'gl>, Error> {
     let hidpi_factor = gl_window.get_hidpi_factor();
     // TODO do not reload the font unless hidpi changed
@@ -107,7 +108,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
   let background_color = game.prelude.background_color;
   let foreground_color = game.prelude.text_color;
-  let background_color_f32 = to_float_color(game.prelude.color_palette, &background_color);
+  let background_color_f32 = to_float_color(game.prelude.color_palette, background_color);
   gl.clear_color(
     background_color_f32[0],
     background_color_f32[1],
@@ -127,14 +128,13 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     let events = window::collect_events(&mut events_loop);
     for event in events.iter() {
       window::handle_resize_events(&gl_window, &*gl, &event);
-      match event {
-        Event::WindowEvent { event, .. } => match event {
+      if let Event::WindowEvent { event, .. } = event {
+        match event {
           WindowEvent::CloseRequested => break 'running,
           WindowEvent::Resized(_window_size) => size_state = SizeState::new(&gl_window, &*gl)?,
-          WindowEvent::KeyboardInput { input, .. } => match input.virtual_keycode {
-            Some(virtual_key) => match input.state {
-              ElementState::Released => (),
-              ElementState::Pressed => {
+          WindowEvent::KeyboardInput { input, .. } => {
+            if let Some(virtual_key) = input.virtual_keycode {
+              if let ElementState::Pressed = input.state {
                 if virtual_key == VirtualKeyCode::Space
                   || virtual_key == VirtualKeyCode::Return
                   || virtual_key == VirtualKeyCode::X
@@ -160,12 +160,10 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                   mb_command = Some(Command::Restart);
                 }
               }
-            },
-            _ => (),
-          },
+            }
+          }
           _ => (),
-        },
-        _ => (),
+        }
       }
     }
 
@@ -176,7 +174,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     self::render::draw_level(
       &size_state.window_size,
       game.prelude.color_palette,
-      &foreground_color,
+      foreground_color,
       &mut size_state.font,
       &object_sprites,
       &game.collision_layers,

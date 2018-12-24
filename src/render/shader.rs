@@ -31,7 +31,7 @@ impl<'gl> Shader<'gl> {
     unsafe {
       gl.get_shader_iv(shader, gl::COMPILE_STATUS, &mut is_compiled);
     }
-    if is_compiled[0] == gl::FALSE as i32 {
+    if is_compiled[0] == i32::from(gl::FALSE) {
       let info_log = gl.get_shader_info_log(shader);
       Err(ShaderCompileError { info_log })?
     } else {
@@ -39,6 +39,7 @@ impl<'gl> Shader<'gl> {
     }
   }
 
+  #[allow(clippy::new_ret_no_self)]
   pub fn new(gl: &'gl gl::Gl, vertex_src: &str, fragment_src: &str) -> Result<Shader<'gl>, Error> {
     let program: u32;
     let vertex: u32;
@@ -62,10 +63,7 @@ impl<'gl> Shader<'gl> {
     gl.delete_shader(vertex);
     gl.delete_shader(fragment);
 
-    Ok(Shader {
-      gl,
-      program: program,
-    })
+    Ok(Shader { gl, program })
   }
 
   /// does _not_ check for errors -- the caller should.
