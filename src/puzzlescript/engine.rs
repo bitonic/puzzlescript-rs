@@ -184,8 +184,9 @@ fn match_cells<'a, 'b, RHS>(
   properties: &HashMap<PropertyName, HashSet<PropertyName>>,
   cells: &grid::Slice<'a, Cell>,
   matchers: &'b [CellMatcher<RHS>],
+  begin_at: usize,
 ) -> Option<(MatchedCells<'b, RHS>, PropertyBindings)> {
-  'outer: for start in 0..cells.len() {
+  'outer: for start in begin_at..cells.len() {
     // stores where we matched for non-Ellipsis entities
     let mut matches: Vec<usize> = Vec::new();
     let mut cell_cursor = start;
@@ -296,7 +297,7 @@ fn apply_rule_body<'a>(
           // moreover, in "no consequence" matchers we know we are done as
           // soon as something matches -- we do not have to check if we
           // changed something or not.
-          match match_cells(properties, &cells, matcher) {
+          match match_cells(properties, &cells, matcher, 0) {
             None => (),
             Some(_) => continue 'no_consequence_matchers,
           }
@@ -336,7 +337,7 @@ fn apply_rule_body<'a>(
             },
             grid: stage,
           };
-          match match_cells(properties, &cells, matcher) {
+          match match_cells(properties, &cells, matcher, 0) {
             None => (),
             Some((matched_cells, bindings)) => {
               matches.push(MatchedCellsCandidate {
@@ -390,7 +391,7 @@ fn apply_rule_body<'a>(
           if new_configuration || candidate.exhausted {
             new_matches.push(candidate);
           } else {
-            for slice_ix in (candidate.matched_slice_ix + 1)..available_slices {
+            for slice_ix in candidate.matched_slice_ix..available_slices {
               let cells = grid::Slice {
                 desc: grid::SliceDesc {
                   axis,
@@ -399,7 +400,20 @@ fn apply_rule_body<'a>(
                 },
                 grid: stage,
               };
-              match match_cells(properties, &cells, candidate.matched_cells.cell_matchers) {
+              // TODO this is broken -- it won't work for ellipsis rules that must
+              // be resumed from the ellipsis (because we might match later), not
+              // from the beginning.
+              let start = if slice_ix == candidate.matched_slice_ix {
+                candidate.matched_cells.matches[0] + 1
+              } else {
+                0
+              };
+              match match_cells(
+                properties,
+                &cells,
+                candidate.matched_cells.cell_matchers,
+                start,
+              ) {
                 None => (),
                 Some((matched_cells, bindings)) => {
                   // we found a new configuration
