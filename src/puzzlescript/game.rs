@@ -112,7 +112,7 @@ pub enum WinCondition {
   SomeOn(HashSet<ObjectName>, HashSet<ObjectName>),
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum Movement {
   Up,
   Down,
@@ -125,7 +125,7 @@ pub enum Movement {
 pub type Cell = im_hashmap::HashMap<ObjectName, Movement>;
 pub type Stage = Grid<Cell>;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 pub enum Level {
   Stage {
     stage: Stage,

@@ -4,6 +4,7 @@ use gleam::gl;
 use glutin::*;
 use std::collections::HashMap;
 use std::fs;
+use std::fs::File;
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::atomic::Ordering;
@@ -30,6 +31,10 @@ use self::state::*;
 pub struct Opts {
   #[structopt(parse(from_os_str))]
   input: PathBuf,
+  #[structopt(long = "save-to", parse(from_os_str))]
+  save_to: Option<PathBuf>,
+  #[structopt(long = "restore-from", parse(from_os_str))]
+  restore_from: Option<PathBuf>,
   #[structopt(long = "start-from-level")]
   start_from_level: Option<usize>,
 }
@@ -117,7 +122,14 @@ pub fn run(opts: Opts) -> Result<(), Error> {
   );
 
   let mut size_state = SizeState::new(&gl_window, &*gl)?;
-  let mut game_state = State::new(&game, opts.start_from_level);
+  let mut game_state = match opts.restore_from {
+    None => State::new(&game, opts.start_from_level),
+    Some(ref restore_from) => {
+      // TODO fail if we have opts.start_from_level
+      let restore_from_file = File::open(restore_from)?;
+      State::restore(&game, restore_from_file)?
+    }
+  };
   let mut prev_frame_time = SystemTime::now();
 
   'running: loop {
@@ -125,6 +137,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     prev_frame_time = SystemTime::now();
 
     let mut mb_command = None;
+    let mut save = false;
     let events = window::collect_events(&mut events_loop);
     for event in events.iter() {
       window::handle_resize_events(&gl_window, &*gl, &event);
@@ -159,6 +172,9 @@ pub fn run(opts: Opts) -> Result<(), Error> {
                 if virtual_key == VirtualKeyCode::R {
                   mb_command = Some(Command::Restart);
                 }
+                if virtual_key == VirtualKeyCode::P {
+                  save = true;
+                }
               }
             }
           }
@@ -168,6 +184,19 @@ pub fn run(opts: Opts) -> Result<(), Error> {
     }
 
     window::clear(&*gl);
+
+    if save {
+      match opts.save_to {
+        None => {
+          eprintln!("You asked me to save the game, but you did not provide a path to save it to!")
+        }
+        Some(ref save_to) => {
+          let save_to_file = File::create(save_to)?;
+          game_state.save(save_to_file)?;
+          eprintln!("State saved to {:?}", save_to);
+        }
+      }
+    }
 
     game_state.update(dt, mb_command);
 

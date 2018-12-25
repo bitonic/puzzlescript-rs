@@ -1,3 +1,6 @@
+#[macro_use]
+extern crate serde_derive;
+
 extern crate failure;
 extern crate freetype;
 extern crate gleam;
@@ -6,6 +9,7 @@ extern crate im_rc;
 extern crate image;
 extern crate lazy_static;
 extern crate nalgebra;
+extern crate serde;
 extern crate structopt;
 
 use structopt::StructOpt;

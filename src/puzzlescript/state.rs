@@ -4,7 +4,7 @@ use lazy_static::*;
 use std::time::Duration;
 use std::time::SystemTime;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 struct LevelState {
   /// what level of the game we're in
   level_number: usize,
@@ -24,7 +24,7 @@ pub enum Command {
   Restart,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 enum Status {
   Playing,
   /// we flash the completed level for a bit after a win
@@ -48,6 +48,13 @@ pub struct State<'a> {
   game: &'a Game,
   history: Vec<LevelState>,
   /// how long since the game started
+  time: Duration,
+  status: Status,
+}
+
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
+struct SerializedState {
+  history: Vec<LevelState>,
   time: Duration,
   status: Status,
 }
@@ -202,10 +209,38 @@ impl<'a> State<'a> {
             }
           }
           let command_time = command_start_time.elapsed().unwrap();
-          let command_time_millis = command_time.as_secs() as f64 * 1000.0 + command_time.subsec_millis() as f64;
+          let command_time_millis =
+            command_time.as_secs() as f64 * 1000.0 + f64::from(command_time.subsec_millis());
           debug_log!("# Command cleared in {}ms", command_time_millis);
         }
       },
     }
+  }
+
+  pub fn save<W>(&self, writer: W) -> serde_json::Result<()>
+  where
+    W: std::io::Write,
+  {
+    serde_json::to_writer(
+      writer,
+      &SerializedState {
+        history: self.history.clone(),
+        time: self.time,
+        status: self.status.clone(),
+      },
+    )
+  }
+
+  pub fn restore<R>(game: &'a Game, reader: R) -> serde_json::Result<State<'a>>
+  where
+    R: std::io::Read,
+  {
+    let serialized_state: SerializedState = serde_json::from_reader(reader)?;
+    Ok(State {
+      game,
+      history: serialized_state.history,
+      time: serialized_state.time,
+      status: serialized_state.status,
+    })
   }
 }

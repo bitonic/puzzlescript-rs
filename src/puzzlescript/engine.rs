@@ -98,7 +98,12 @@ struct MatchedCells<'a, RHS> {
 
 impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
   /// returns if anything changed
-  pub fn apply(&self, bindings: &PropertyBindings, stage: &mut Stage) -> bool {
+  pub fn apply(
+    &self,
+    collision_layers: &CollisionLayersInfo,
+    bindings: &PropertyBindings,
+    stage: &mut Stage,
+  ) -> bool {
     let mut something_changed = false;
     let mut matches_iter = self.matches.iter();
     let mut cells = grid::SliceMut {
@@ -141,6 +146,9 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
                       .unwrap_or(&Movement::Stationary),
                     Some(movement) => movement,
                   };
+                  for other_object in collision_layers.objects_in_same_layer(&object.object) {
+                    cells[cell_ix].remove(other_object);
+                  }
                   cells[cell_ix].insert(object.object.clone(), movement);
                 }
               }
@@ -153,6 +161,9 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
                     None => *old_cell.get(&object).unwrap_or(&Movement::Stationary),
                     Some(movement) => movement,
                   };
+                  for other_object in collision_layers.objects_in_same_layer(&object) {
+                    cells[cell_ix].remove(other_object);
+                  }
                   cells[cell_ix].insert(object, movement);
                 }
               }
@@ -251,6 +262,7 @@ struct MatchedCellsCandidate<'a> {
 /// * For "no consequence" rule bodies, that they matched.
 fn apply_rule_body<'a>(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
+  collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
   axis: grid::SliceAxis,
   reversed: bool,
@@ -359,7 +371,10 @@ fn apply_rule_body<'a>(
         // don't replace with a fold, it's important that they all run
         for candidate in matches.iter() {
           something_changed =
-            candidate.matched_cells.apply(&overall_bindings, stage) || something_changed;
+            candidate
+              .matched_cells
+              .apply(collision_layers, &overall_bindings, stage)
+              || something_changed;
         }
         // if something _did_ change, we're done
         if something_changed {
@@ -423,6 +438,7 @@ fn apply_rule_body<'a>(
 
 fn apply_rule(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
+  collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
   commands: &mut Vec<RuleCommand>,
   rule: &Rule,
@@ -434,7 +450,14 @@ fn apply_rule(
     RuleDirection::Left => (grid::SliceAxis::Row, true),
   };
 
-  let matched = apply_rule_body(properties, stage, axis, reversed, &rule.body);
+  let matched = apply_rule_body(
+    properties,
+    collision_layers,
+    stage,
+    axis,
+    reversed,
+    &rule.body,
+  );
   if matched {
     verbose_log!("Rule {} {} applied.", rule.line_number, rule.direction);
     for command in rule.commands.clone() {
@@ -454,6 +477,7 @@ fn apply_rule(
 
 fn apply_rule_group(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
+  collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
   commands: &mut Vec<RuleCommand>,
   rule_group: &RuleGroup,
@@ -466,7 +490,7 @@ fn apply_rule_group(
   while keep_going {
     keep_going = false;
     for rule in rule_group.rules.iter() {
-      let matched = apply_rule(properties, stage, commands, rule);
+      let matched = apply_rule(properties, collision_layers, stage, commands, rule);
       keep_going = keep_going || matched;
       any_matched = any_matched || matched;
     }
@@ -476,33 +500,21 @@ fn apply_rule_group(
 
 fn apply_rule_groups(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
+  collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
   commands: &mut Vec<RuleCommand>,
   rule_groups: &[RuleGroup],
 ) -> bool {
   let mut any_matched = false;
   for rule_group in rule_groups {
-    let matched = apply_rule_group(properties, stage, commands, rule_group);
+    let matched = apply_rule_group(properties, collision_layers, stage, commands, rule_group);
     any_matched = any_matched || matched;
   }
   any_matched
 }
 
-fn apply_movement(collision_layers: &[CollisionLayer], stage: &mut Stage) -> bool {
+fn apply_movement(collision_layers_info: &CollisionLayersInfo, stage: &mut Stage) -> bool {
   let mut something_moved = false;
-
-  // build a map from each object to a collision layer id
-  let mut collision_layers_map: HashMap<ObjectName, usize> = HashMap::new();
-  for (ix, collision_layer) in collision_layers.iter().enumerate() {
-    match collision_layer {
-      CollisionLayer::Background => (),
-      CollisionLayer::Normal(objects) => {
-        for object in objects {
-          collision_layers_map.insert(object.clone(), ix);
-        }
-      }
-    }
-  }
 
   let mut move_to_cell = |stage: &mut Stage, object, row, col, target_row, target_col| -> bool {
     // if we're out of bounds, forget it
@@ -517,10 +529,10 @@ fn apply_movement(collision_layers: &[CollisionLayer], stage: &mut Stage) -> boo
     }
     // if the cell contains anything from the same collision layer
     // as ours, abort
-    let our_collision_layer = collision_layers_map[&object];
+    let our_collision_layer = collision_layers_info.object_to_ix[&object];
     let target_cell = &stage[(target_row as usize, target_col as usize)];
     for other_object in target_cell.keys() {
-      if collision_layers_map[other_object] == our_collision_layer {
+      if collision_layers_info.object_to_ix[other_object] == our_collision_layer {
         return false;
       }
     }
@@ -681,16 +693,62 @@ pub enum Advance {
   Restart,
 }
 
+struct CollisionLayersInfo<'a> {
+  layers: &'a [CollisionLayer],
+  object_to_ix: HashMap<ObjectName, usize>,
+}
+
+impl<'a> CollisionLayersInfo<'a> {
+  /// returns including the provided object
+  fn objects_in_same_layer(&self, object: &ObjectName) -> &Vec<ObjectName> {
+    match self.layers[self.object_to_ix[object]] {
+      CollisionLayer::Background => panic!("Unexpected background layer"),
+      CollisionLayer::Normal(ref objects) => objects,
+    }
+  }
+}
+
 /// returns whether the winning conditions were satisfied
 pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
+  // build a map from each object to a collision layer id
+  let collision_layers_info = CollisionLayersInfo {
+    layers: &game.collision_layers,
+    object_to_ix: {
+      let mut collision_layers_map: HashMap<ObjectName, usize> = HashMap::new();
+      for (ix, collision_layer) in game.collision_layers.iter().enumerate() {
+        match collision_layer {
+          CollisionLayer::Background => (),
+          CollisionLayer::Normal(objects) => {
+            for object in objects {
+              collision_layers_map.insert(object.clone(), ix);
+            }
+          }
+        }
+      }
+      collision_layers_map
+    },
+  };
+
   let mut active = false;
   let mut commands = Vec::new();
   verbose_log!("# Applying rules");
-  active = apply_rule_groups(&game.properties, stage, &mut commands, &game.rules) || active;
+  active = apply_rule_groups(
+    &game.properties,
+    &collision_layers_info,
+    stage,
+    &mut commands,
+    &game.rules,
+  ) || active;
   verbose_log!("# Applying movement");
-  active = apply_movement(&game.collision_layers, stage) || active;
+  active = apply_movement(&collision_layers_info, stage) || active;
   verbose_log!("# Applying late rules");
-  active = apply_rule_groups(&game.properties, stage, &mut commands, &game.late_rules) || active;
+  active = apply_rule_groups(
+    &game.properties,
+    &collision_layers_info,
+    stage,
+    &mut commands,
+    &game.late_rules,
+  ) || active;
   if has_movement(stage) {
     panic!("Got movement after late rules!");
   };
