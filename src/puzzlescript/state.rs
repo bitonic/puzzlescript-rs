@@ -84,7 +84,7 @@ impl<'a> State<'a> {
         ref stage,
         ref background,
       } if self.game.prelude.run_rules_on_level_start => {
-        println!("Executing rules on level start");
+        verbose_log!("Executing rules on level start");
         let mut new_stage = stage.clone();
         engine::advance(self.game, &mut new_stage);
         Level::Stage {
