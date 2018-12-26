@@ -13,7 +13,7 @@ struct LevelState {
   level: Level,
 }
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub enum Command {
   Up,
   Down,
@@ -255,5 +255,41 @@ impl<'a> State<'a> {
       time: serialized_state.time,
       status: serialized_state.status,
     })
+  }
+
+  pub fn replay(game: &'a Game, commands: &[Command]) -> State<'a> {
+    let mut st = State::new(game, None);
+    for command in commands.iter() {
+      st.update(Duration::new(0, 0), Some(*command));
+      // immediately go forward when winning
+      if let Status::FlashWonLevel { .. } = st.status {
+        st.status = Status::Playing;
+        st.reset_and_push_level(st.last_state().level_number + 1);
+      }
+    }
+    st
+  }
+}
+
+#[cfg(test)]
+mod tests {
+  use crate::puzzlescript::compiler;
+  use crate::puzzlescript::parser;
+  use crate::puzzlescript::state::*;
+
+  #[test]
+  fn heroes_of_sokoban_1() {
+    let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl");
+    let ast = parser::parse(file).unwrap();
+    let game = compiler::compile(&ast).unwrap();
+    let commands: Vec<Command> = serde_json::from_str(include_str!(
+      "../../puzzlescripts/third_party/heroes_of_sokoban_1.solution"
+    ))
+    .unwrap();
+    let state = State::replay(&game, &commands);
+    match state.status {
+      Status::Won { .. } => (),
+      status => panic!("Expecting Won, got {:?}", status),
+    }
   }
 }
