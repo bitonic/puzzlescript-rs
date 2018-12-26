@@ -78,10 +78,25 @@ impl<'a> State<'a> {
     &self.history.last().unwrap()
   }
 
-  fn push_level(&mut self, level: usize) {
+  fn push_level(&mut self, level_number: usize) {
+    let level = match self.game.levels[level_number] {
+      Level::Stage {
+        ref stage,
+        ref background,
+      } if self.game.prelude.run_rules_on_level_start => {
+        println!("Executing rules on level start");
+        let mut new_stage = stage.clone();
+        engine::advance(self.game, &mut new_stage);
+        Level::Stage {
+          stage: new_stage,
+          background: background.clone(),
+        }
+      }
+      ref level => level.clone(),
+    };
     self.history.push(LevelState {
-      level_number: level,
-      level: self.game.levels[level].clone(),
+      level_number,
+      level,
     })
   }
 
@@ -159,16 +174,14 @@ impl<'a> State<'a> {
   }
 
   pub fn new(game: &'a Game, starting_level: Option<usize>) -> State<'a> {
-    let level = starting_level.unwrap_or(0);
-    State {
-      history: vec![LevelState {
-        level_number: level,
-        level: game.levels[level].clone(),
-      }],
+    let mut state = State {
+      history: vec![],
       game,
       time: Duration::new(0, 0),
       status: Status::Playing,
-    }
+    };
+    state.push_level(starting_level.unwrap_or(0));
+    state
   }
 
   pub fn update(&mut self, dt: Duration, mb_command: Option<Command>) {
