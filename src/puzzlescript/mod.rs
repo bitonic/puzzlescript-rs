@@ -1,5 +1,5 @@
 use crate::render::*;
-use failure::Error;
+use failure::{Error, Fail};
 use gleam::gl;
 use glutin::*;
 use std::collections::HashMap;
@@ -37,6 +37,10 @@ pub struct Opts {
   restore_from: Option<PathBuf>,
   #[structopt(long = "start-from-level")]
   start_from_level: Option<usize>,
+  #[structopt(long = "record-to", parse(from_os_str))]
+  record_to: Option<PathBuf>,
+  #[structopt(long = "replay-from", parse(from_os_str))]
+  replay_from: Option<PathBuf>,
 }
 
 struct SizeState<'gl> {
@@ -59,6 +63,12 @@ impl<'gl> SizeState<'gl> {
       )?,
     })
   }
+}
+
+#[derive(Debug, Fail)]
+#[fail(display = "Puzzlescript execution error: {}", msg)]
+pub struct PuzzlescriptError {
+  pub msg: String,
 }
 
 pub fn run(opts: Opts) -> Result<(), Error> {
@@ -122,14 +132,27 @@ pub fn run(opts: Opts) -> Result<(), Error> {
   );
 
   let mut size_state = SizeState::new(&gl_window, &*gl)?;
-  let mut game_state = match opts.restore_from {
-    None => State::new(&game, opts.start_from_level),
-    Some(ref restore_from) => {
-      // TODO fail if we have opts.start_from_level
-      let restore_from_file = File::open(restore_from)?;
-      State::restore(&game, restore_from_file)?
-    }
+  let conflicting_options = |msg: &'static str| {
+    Err(PuzzlescriptError {
+      msg: format!("Conflicting options: {}", msg),
+    })
   };
+  let (mut game_state, mut commands_recording) =
+    match (opts.start_from_level, opts.restore_from, opts.replay_from) {
+      (Some(_), Some(_), _) => conflicting_options("start-from-level and restore-from")?,
+      (Some(_), _, Some(_)) => conflicting_options("start-from-level and replay-from")?,
+      (_, Some(_), Some(_)) => conflicting_options("restore-from and replay-from")?,
+      (mb_start_level, None, None) => (State::new(&game, mb_start_level), Vec::new()),
+      (None, Some(ref restore_from), None) => {
+        let restore_from_file = File::open(restore_from)?;
+        (State::restore(&game, restore_from_file)?, Vec::new())
+      }
+      (None, None, Some(ref replay_from)) => {
+        let replay_from_file = File::open(replay_from)?;
+        let commands: Vec<Command> = serde_json::from_reader(replay_from_file)?;
+        (State::replay(&game, &commands), commands)
+      }
+    };
   let mut prev_frame_time = SystemTime::now();
 
   'running: loop {
@@ -143,7 +166,16 @@ pub fn run(opts: Opts) -> Result<(), Error> {
       window::handle_resize_events(&gl_window, &*gl, &event);
       if let Event::WindowEvent { event, .. } = event {
         match event {
-          WindowEvent::CloseRequested => break 'running,
+          WindowEvent::CloseRequested => {
+            match opts.record_to {
+              None => (),
+              Some(record_to) => {
+                let record_to_file = File::create(record_to)?;
+                serde_json::to_writer(record_to_file, &commands_recording)?;
+              }
+            }
+            break 'running;
+          }
           WindowEvent::Resized(_window_size) => size_state = SizeState::new(&gl_window, &*gl)?,
           WindowEvent::KeyboardInput { input, .. } => {
             if let Some(virtual_key) = input.virtual_keycode {
@@ -196,6 +228,11 @@ pub fn run(opts: Opts) -> Result<(), Error> {
           eprintln!("State saved to {:?}", save_to);
         }
       }
+    }
+
+    match mb_command {
+      None => (),
+      Some(command) => commands_recording.push(command),
     }
 
     game_state.update(dt, mb_command);
