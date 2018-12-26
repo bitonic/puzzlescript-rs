@@ -1,4 +1,6 @@
 // TODO remove panics, use error instead
+// TODO handle `no` better, it's very different from the other qualifiers and
+// we need to special cases in various places...
 use crate::grid::*;
 use crate::puzzlescript::ast;
 use crate::puzzlescript::game::*;
@@ -569,8 +571,12 @@ impl<'a> CompileState<'a> {
             derived_matchers: match_objects.clone(),
           });
           let mut lhs_info = LHSInfo::new();
-          with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
-          lhs_info.insert_entity(&match_entity.entity, &entity_info);
+          // if the qualifier is No, we do not "remember it", since the match
+          // is negative
+          if match_entity.qualifier != Some(ast::EntityQualifier::No) {
+            with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
+            lhs_info.insert_entity(&match_entity.entity, &entity_info);
+          }
           (
             lhs_info,
             Rc::new(
@@ -594,8 +600,12 @@ impl<'a> CompileState<'a> {
             derived_qualifier: qualifier,
             binder,
           });
-          lhs_info.insert_entity(&match_entity.entity, &entity_info);
-          with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
+          // if the qualifier is No, we do not "remember it", since the match
+          // is negative
+          if match_entity.qualifier != Some(ast::EntityQualifier::No) {
+            lhs_info.insert_entity(&match_entity.entity, &entity_info);
+            with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
+          }
           result.push((
             lhs_info,
             Rc::new(vec![LHSEntity::Property {
