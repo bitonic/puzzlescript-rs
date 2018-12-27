@@ -1243,13 +1243,6 @@ mod tests {
   }
 
   #[test]
-  fn tutorial_match_3() {
-    let file = include_str!("../../puzzlescripts/tutorial/match_3.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn tutorial_random_robots() {
     let file = include_str!("../../puzzlescripts/tutorial/random_robots.pzl");
     let ast = parser::parse(file).unwrap();
