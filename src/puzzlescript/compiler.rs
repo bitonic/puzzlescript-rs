@@ -697,16 +697,44 @@ impl<'a> CompileState<'a> {
               LegendBody::Aggregate(objects) => {
                 // first see if we can resolve the qualifier immediately
                 match resolve_qualifier(rule_direction, match_entity.qualifier) {
-                  // in which case just use it for all the objects.
-                  Some(qualifier) => objects
-                    .iter()
-                    .map(|object| {
-                      RHSEntity::Object(QualifiedObject {
-                        object: object.clone(),
-                        qualifier,
+                  // in which case just use it for all the objects -- with one
+                  // caveat: passthroughs stay passthroughs only if we do not
+                  // have the same object on the LHS, or if the object on the LHS
+                  // is a passthrough too. otherwise they are stationary.
+                  //
+                  // the reasoning is that in a rule like
+                  //
+                  // ```text
+                  // [ > A ] -> [ A ]
+                  // ```
+                  //
+                  // we want the A on the right to change to stationary, not to
+                  // carry over the `>`.
+                  Some(qualifier) => {
+                    let actual_qualifier = if qualifier != Qualifier::Passthrough {
+                      qualifier
+                    } else {
+                      match cell_lhs_info.get_entity(&match_entity.entity) {
+                        Ambiguous => Qualifier::Passthrough,
+                        Unique(lhs_info) => match &*lhs_info {
+                          LHSEntityInfo::Property{..} => panic!("Got property LHS info from aggregate"),
+                          LHSEntityInfo::Aggregate{original_qualifier, ..} => match original_qualifier {
+                            None => Qualifier::Passthrough,
+                            Some(_) => Qualifier::Stationary,
+                          }
+                        }
+                      }
+                    };
+                    objects
+                      .iter()
+                      .map(|object| {
+                        RHSEntity::Object(QualifiedObject {
+                          object: object.clone(),
+                          qualifier: actual_qualifier,
+                        })
                       })
-                    })
-                    .collect(),
+                      .collect()
+                  },
                   // otherwise, if the qualifier is ambiguous, we need to find it
                   // on the LHS somewhere
                   None => {
@@ -820,14 +848,13 @@ impl<'a> CompileState<'a> {
                   }
                 }
               }
-              // properties are different....
               LegendBody::Property(_) => {
                 // otherwise, we need to find out which property on the
                 // LHS this property refers to.
                 //
                 // First define a utility to finish up once we have found
                 // something on the LHS:
-                let with_lhs_info = |lhs_info: &LHSEntityInfo| {
+                let with_lhs_info = |same_cell: bool, lhs_info: &LHSEntityInfo| {
                   match lhs_info {
                     LHSEntityInfo::Aggregate { .. } => panic!("Got LHS aggregate for property"),
                     LHSEntityInfo::Property {
@@ -835,12 +862,20 @@ impl<'a> CompileState<'a> {
                       derived_qualifier,
                       binder,
                     } => match resolve_qualifier(rule_direction, match_entity.qualifier) {
-                      // if we can resolve a qualifier immediately, use that one
-                      Some(qualifier) => vec![RHSEntity::Property {
-                        qualifier,
-                        binder: *binder,
-                        property: match_entity.entity.clone(),
-                      }],
+                      // if we can resolve a qualifier immediately, use that one -- but
+                      // as explained above, treat passthrough specially
+                      Some(qualifier) => {
+                        let actual_qualifier = if !same_cell && qualifier == Qualifier::Passthrough && *derived_qualifier != Qualifier::Passthrough {
+                          Qualifier::Stationary
+                        } else {
+                          qualifier
+                        };
+                        vec![RHSEntity::Property {
+                          qualifier: actual_qualifier,
+                          binder: *binder,
+                          property: match_entity.entity.clone(),
+                        }]
+                      },
                       // otherwise, use the one from the LHSInfo
                       None => {
                         if original_qualifier == &match_entity.qualifier {
@@ -861,16 +896,16 @@ impl<'a> CompileState<'a> {
                 };
                 // Then, first check if we have a matching property in the same cell:
                 match cell_lhs_info.get_entity(&match_entity.entity) {
-                  Unique(lhs_info) => with_lhs_info(&lhs_info),
+                  Unique(lhs_info) => with_lhs_info(true, &lhs_info),
                   Ambiguous => {
                     // Failing that, see if we have it anywhere else in the rule:
                     match overall_lhs_info.get_entity(&match_entity.entity) {
-                      Unique(lhs_info) => with_lhs_info(&lhs_info),
+                      Unique(lhs_info) => with_lhs_info(false, &lhs_info),
                       // otherwise we're done
                       Ambiguous => panic!(
-                      "Could not find property matching {:?} anywhere on the LHS (cell or overall)",
-                      match_entity.entity
-                    ),
+                        "Could not find property matching {:?} anywhere on the LHS (cell or overall)",
+                        match_entity.entity
+                      ),
                     }
                   }
                 }
@@ -1308,13 +1343,6 @@ mod tests {
   #[test]
   fn advanced_2d_whale_world() {
     let file = include_str!("../../puzzlescripts/advanced/2d_whale_world.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
-  fn heroes_of_sokoban_3() {
-    let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
