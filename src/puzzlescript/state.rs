@@ -1,6 +1,7 @@
 use crate::puzzlescript::engine;
 use crate::puzzlescript::game::*;
 use lazy_static::*;
+use std::rc::Rc;
 use std::time::Duration;
 use std::time::SystemTime;
 
@@ -37,6 +38,9 @@ enum Status {
     /// the last level to show
     level: Level,
   },
+  IntraLevelMessage {
+    message: Rc<str>,
+  },
 }
 
 /// flash win screen for half a second
@@ -66,11 +70,15 @@ fn duration_to_seconds(dt: Duration) -> f64 {
 */
 
 impl<'a> State<'a> {
-  pub fn to_draw(&self) -> &Level {
+  // TODO remove the `Level`, which requires some pretty gratuitous
+  // cloning. right now it does not happen to be a problem, but it
+  // might become one if the level structure changes.
+  pub fn to_draw(&self) -> Level {
     match self.status {
-      Status::FlashWonLevel { ref level, .. } => level,
-      Status::Playing => &self.last_state().level,
-      Status::Won { ref level } => level,
+      Status::FlashWonLevel { ref level, .. } => level.clone(),
+      Status::Playing => self.last_state().level.clone(),
+      Status::Won { ref level } => level.clone(),
+      Status::IntraLevelMessage { ref message } => Level::Message(message.clone()),
     }
   }
 
@@ -167,6 +175,16 @@ impl<'a> State<'a> {
               level: next_level(new_stage),
             })
           }
+          engine::Advance::Message(message) =>
+          // if we need to display a message we still need to advance
+          // the state
+          {
+            self.history.push(LevelState {
+              level_number: last_state.level_number,
+              level: next_level(new_stage),
+            });
+            self.status = Status::IntraLevelMessage { message };
+          }
           engine::Advance::Nothing => (),
         }
       }
@@ -198,6 +216,11 @@ impl<'a> State<'a> {
     match self.status {
       Status::FlashWonLevel { .. } => (),
       Status::Won { .. } => (),
+      Status::IntraLevelMessage { .. } => match mb_command {
+        None => (),
+        Some(Command::Action) => self.status = Status::Playing,
+        Some(_) => (),
+      },
       Status::Playing => match mb_command {
         None => (),
         Some(command) => {

@@ -244,7 +244,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
       &mut size_state.font,
       &object_sprites,
       &game.collision_layers,
-      game_state.to_draw(),
+      &game_state.to_draw(),
     )?;
 
     gl_window.swap_buffers()?;

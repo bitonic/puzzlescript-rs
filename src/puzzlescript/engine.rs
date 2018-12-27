@@ -2,6 +2,7 @@ use crate::grid;
 use crate::puzzlescript::game::*;
 use im_rc::hashmap as im_hashmap;
 use std::collections::{HashMap, HashSet};
+use std::rc::Rc;
 
 pub type PropertyBindings = HashMap<PropertyBinder, ObjectName>;
 
@@ -710,6 +711,8 @@ pub enum Advance {
   Won,
   /// We need to restart the level
   Restart,
+  /// We need to display a message
+  Message(Rc<str>),
 }
 
 struct CollisionLayersInfo<'a> {
@@ -776,6 +779,7 @@ pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
       RuleCommand::Sound(_) => (), // TODO sounds
       RuleCommand::Cancel => return Advance::Nothing,
       RuleCommand::Restart => return Advance::Restart,
+      RuleCommand::Message(msg) => return Advance::Message(msg),
       command => panic!("TODO command: {:?}", command),
     }
   }
