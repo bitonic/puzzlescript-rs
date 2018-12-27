@@ -277,19 +277,30 @@ mod tests {
   use crate::puzzlescript::parser;
   use crate::puzzlescript::state::*;
 
-  #[test]
-  fn heroes_of_sokoban_1() {
-    let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl");
-    let ast = parser::parse(file).unwrap();
+  fn won_test(pzl_src: &str, solution_str: &str) {
+    let ast = parser::parse(pzl_src).unwrap();
     let game = compiler::compile(&ast).unwrap();
-    let commands: Vec<Command> = serde_json::from_str(include_str!(
-      "../../puzzlescripts/third_party/heroes_of_sokoban_1.solution"
-    ))
-    .unwrap();
+    let commands: Vec<Command> = serde_json::from_str(solution_str).unwrap();
     let state = State::replay(&game, &commands);
     match state.status {
       Status::Won { .. } => (),
       status => panic!("Expecting Won, got {:?}", status),
     }
+  }
+
+  #[test]
+  fn heroes_of_sokoban_1() {
+    won_test(
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.solution"),
+    );
+  }
+
+  #[test]
+  fn heroes_of_sokoban_2() {
+    won_test(
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.pzl"),
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.solution"),
+    );
   }
 }

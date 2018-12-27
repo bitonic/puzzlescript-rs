@@ -1313,20 +1313,6 @@ mod tests {
   }
 
   #[test]
-  fn heroes_of_sokoban_1() {
-    let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
-  fn heroes_of_sokoban_2() {
-    let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn heroes_of_sokoban_3() {
     let file = include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.pzl");
     let ast = parser::parse(file).unwrap();
