@@ -289,6 +289,14 @@ mod tests {
   }
 
   #[test]
+  fn tutorial_basic() {
+    won_test(
+      include_str!("../../puzzlescripts/tutorial/basic.pzl"),
+      include_str!("../../puzzlescripts/tutorial/basic.solution"),
+    );
+  }
+
+  #[test]
   fn heroes_of_sokoban_1() {
     won_test(
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),

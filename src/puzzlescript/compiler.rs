@@ -1236,13 +1236,6 @@ mod tests {
   use crate::puzzlescript::parser;
 
   #[test]
-  fn tutorial_basic() {
-    let file = include_str!("../../puzzlescripts/tutorial/basic.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn tutorial_eyeball() {
     let file = include_str!("../../puzzlescripts/tutorial/eyeball.pzl");
     let ast = parser::parse(file).unwrap();

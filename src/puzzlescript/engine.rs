@@ -206,6 +206,7 @@ fn match_cells<'a, 'b, RHS>(
         CellMatcher::Ellipsis => {
           // we have an ellipsis, just go forward
           matcher_cursor += 1;
+          cell_cursor += 1;
           after_ellipsis = true;
         }
         CellMatcher::Objects(ref lhs_objects, _) => {
@@ -687,6 +688,10 @@ fn check_win_condition(win_condition: &WinCondition, stage: &Stage) -> bool {
 }
 
 fn check_win_conditions(win_conditions: &[WinCondition], stage: &Stage) -> bool {
+  if win_conditions.is_empty() {
+    return false;
+  }
+
   for win_condition in win_conditions {
     if !check_win_condition(win_condition, stage) {
       return false;
