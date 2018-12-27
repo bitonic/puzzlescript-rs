@@ -95,7 +95,7 @@ pub type Matcher<RHS> = Vec<CellMatcher<RHS>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum RuleCommand {
-  Message(String),
+  Message(Rc<str>),
   Sound(SoundFx),
   Cancel,
   Restart,

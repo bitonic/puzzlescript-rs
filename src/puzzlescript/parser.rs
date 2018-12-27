@@ -937,7 +937,7 @@ impl<'a> ParseState<'a> {
 
   fn lex_rule_command(&mut self) -> Result<Option<RuleCommand>, ErrorMsg> {
     Ok(if self.lex_token("message")? {
-      Some(RuleCommand::Message(self.consume_line(true)?))
+      Some(RuleCommand::Message(Rc::from(self.consume_line(true)?)))
     } else if self.lex_token("cancel")? {
       Some(RuleCommand::Cancel)
     } else if self.lex_token("restart")? {
