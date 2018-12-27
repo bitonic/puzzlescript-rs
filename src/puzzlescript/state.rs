@@ -303,4 +303,12 @@ mod tests {
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.solution"),
     );
   }
+
+  #[test]
+  fn heroes_of_sokoban_3() {
+    won_test(
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.pzl"),
+      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.solution"),
+    );
+  }
 }

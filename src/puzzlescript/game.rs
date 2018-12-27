@@ -187,9 +187,7 @@ impl Display for Qualifier {
 
 impl Display for QualifiedObject {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
-    if self.qualifier != Qualifier::Passthrough {
-      write!(f, "{} ", self.qualifier)?;
-    }
+    write!(f, "{} ", self.qualifier)?;
     write!(f, "{}", self.object)
   }
 }
