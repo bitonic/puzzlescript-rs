@@ -305,6 +305,14 @@ mod tests {
   }
 
   #[test]
+  fn elementary_block_faker() {
+    won_test(
+      include_str!("../../puzzlescripts/tutorial/block_faker.pzl"),
+      include_str!("../../puzzlescripts/tutorial/block_faker.solution"),
+    );
+  }
+
+  #[test]
   fn heroes_of_sokoban_1() {
     won_test(
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
