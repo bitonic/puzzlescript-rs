@@ -1278,13 +1278,6 @@ mod tests {
   }
 
   #[test]
-  fn elementary_kettle() {
-    let file = include_str!("../../puzzlescripts/elementary/kettle.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn intermediate_lime_rick() {
     let file = include_str!("../../puzzlescripts/intermediate/lime_rick.pzl");
     let ast = parser::parse(file).unwrap();

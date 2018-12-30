@@ -346,6 +346,14 @@ mod tests {
   }
 
   #[test]
+  fn elementary_kettle() {
+    won_test(
+      include_str!("../../puzzlescripts/elementary/kettle.pzl"),
+      include_str!("../../puzzlescripts/elementary/kettle.solution"),
+    );
+  }
+
+  #[test]
   fn heroes_of_sokoban_1() {
     won_test(
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
