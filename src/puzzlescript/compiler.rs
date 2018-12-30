@@ -865,7 +865,7 @@ impl<'a> CompileState<'a> {
                       // if we can resolve a qualifier immediately, use that one -- but
                       // as explained above, treat passthrough specially
                       Some(qualifier) => {
-                        let actual_qualifier = if !same_cell && qualifier == Qualifier::Passthrough && *derived_qualifier != Qualifier::Passthrough {
+                        let actual_qualifier = if same_cell && qualifier == Qualifier::Passthrough && *derived_qualifier != Qualifier::Passthrough {
                           Qualifier::Stationary
                         } else {
                           qualifier
