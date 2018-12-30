@@ -706,13 +706,13 @@ pub enum Advance {
   /// Nothing happened
   Nothing,
   /// Some movement / rules happened
-  Active,
+  Active(Stage),
   /// We've won the current stage
-  Won,
+  Won(Stage),
   /// We need to restart the level
   Restart,
   /// We need to display a message
-  Message(Rc<str>),
+  Message(Stage, Rc<str>),
 }
 
 struct CollisionLayersInfo<'a> {
@@ -731,7 +731,22 @@ impl<'a> CollisionLayersInfo<'a> {
 }
 
 /// returns whether the winning conditions were satisfied
-pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
+pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) -> Advance {
+  let mut stage = old_stage.clone();
+
+  // apply movement to player
+  match mb_movement {
+    None => (),
+    Some(movement) =>
+      for cell in stage.iter_mut() {
+        for player in game.players.iter() {
+          if cell.contains_key(player) {
+            cell[player] = movement;
+          }
+        }
+      }
+  }
+
   // build a map from each object to a collision layer id
   let collision_layers_info = CollisionLayersInfo {
     layers: &game.collision_layers,
@@ -757,21 +772,21 @@ pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
   active = apply_rule_groups(
     &game.properties,
     &collision_layers_info,
-    stage,
+    &mut stage,
     &mut commands,
     &game.rules,
   ) || active;
   verbose_log!("# Applying movement");
-  active = apply_movement(&collision_layers_info, stage) || active;
+  active = apply_movement(&collision_layers_info, &mut stage) || active;
   verbose_log!("# Applying late rules");
   active = apply_rule_groups(
     &game.properties,
     &collision_layers_info,
-    stage,
+    &mut stage,
     &mut commands,
     &game.late_rules,
   ) || active;
-  if has_movement(stage) {
+  if has_movement(&stage) {
     panic!("Got movement after late rules!");
   };
   for command in commands {
@@ -779,15 +794,15 @@ pub fn advance(game: &Game, stage: &mut Stage) -> Advance {
       RuleCommand::Sound(_) => (), // TODO sounds
       RuleCommand::Cancel => return Advance::Nothing,
       RuleCommand::Restart => return Advance::Restart,
-      RuleCommand::Message(msg) => return Advance::Message(msg),
+      RuleCommand::Message(msg) => return Advance::Message(stage, msg),
       command => panic!("TODO command: {:?}", command),
     }
   }
-  let won = check_win_conditions(&game.win_conditions, stage);
+  let won = check_win_conditions(&game.win_conditions, &stage);
   if won {
-    Advance::Won
+    Advance::Won(stage)
   } else if active {
-    Advance::Active
+    Advance::Active(stage)
   } else {
     Advance::Nothing
   }
