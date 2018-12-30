@@ -354,6 +354,14 @@ mod tests {
   }
 
   #[test]
+  fn elementary_neko() {
+    won_test(
+      include_str!("../../puzzlescripts/elementary/neko.pzl"),
+      include_str!("../../puzzlescripts/elementary/neko.solution"),
+    );
+  }
+
+  #[test]
   fn elementary_microban() {
     won_test(
       include_str!("../../puzzlescripts/elementary/microban.pzl"),
