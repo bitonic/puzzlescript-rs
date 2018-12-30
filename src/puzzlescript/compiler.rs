@@ -1257,13 +1257,6 @@ mod tests {
   }
 
   #[test]
-  fn elementary_neko() {
-    let file = include_str!("../../puzzlescripts/elementary/neko.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn elementary_notsnake() {
     let file = include_str!("../../puzzlescripts/elementary/notsnake.pzl");
     let ast = parser::parse(file).unwrap();

@@ -207,7 +207,6 @@ fn match_cells<'a, 'b, RHS>(
         CellMatcher::Ellipsis => {
           // we have an ellipsis, just go forward
           matcher_cursor += 1;
-          cell_cursor += 1;
           after_ellipsis = true;
         }
         CellMatcher::Objects(ref lhs_objects, _) => {
