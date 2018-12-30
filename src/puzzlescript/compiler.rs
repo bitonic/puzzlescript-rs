@@ -1264,13 +1264,6 @@ mod tests {
   }
 
   #[test]
-  fn intermediate_octat() {
-    let file = include_str!("../../puzzlescripts/intermediate/octat.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn intermediate_constellation_z() {
     let file = include_str!("../../puzzlescripts/intermediate/constellation_z.pzl");
     let ast = parser::parse(file).unwrap();
