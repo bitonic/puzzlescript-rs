@@ -97,8 +97,12 @@ impl<'a> State<'a> {
           engine::Advance::Nothing => stage.clone(),
           engine::Advance::Active(new_stage) => new_stage,
           engine::Advance::Won(_) => panic!("TODO Won when executing rules at beginning of level!"),
-          engine::Advance::Restart => panic!("TODO Restart when executing rules at beginning of level!"),
-          engine::Advance::Message(_, _) => panic!("TODO Won when executing rules at beginning of level!"),
+          engine::Advance::Restart => {
+            panic!("TODO Restart when executing rules at beginning of level!")
+          }
+          engine::Advance::Message(_, _) => {
+            panic!("TODO Won when executing rules at beginning of level!")
+          }
         };
         Level::Stage {
           stage: new_stage,

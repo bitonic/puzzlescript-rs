@@ -737,7 +737,7 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
   // apply movement to player
   match mb_movement {
     None => (),
-    Some(movement) =>
+    Some(movement) => {
       for cell in stage.iter_mut() {
         for player in game.players.iter() {
           if cell.contains_key(player) {
@@ -745,6 +745,7 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
           }
         }
       }
+    }
   }
 
   // build a map from each object to a collision layer id
@@ -798,6 +799,24 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
       command => panic!("TODO command: {:?}", command),
     }
   }
+
+  // if required, check that the player has moved
+  if game.prelude.require_player_movement {
+    let is_player_cell = |cell: &Cell| {
+      for player in game.players.iter() {
+        if cell.contains_key(player) {
+          return true;
+        }
+      }
+      false
+    };
+    let original_movement = old_stage.iter().position(is_player_cell);
+    let new_movement = stage.iter().position(is_player_cell);
+    if original_movement == new_movement {
+      return Advance::Nothing;
+    }
+  }
+
   let won = check_win_conditions(&game.win_conditions, &stage);
   if won {
     Advance::Won(stage)
