@@ -402,6 +402,14 @@ mod tests {
   }
 
   #[test]
+  fn advanced_midas() {
+    won_test(
+      include_str!("../../puzzlescripts/advanced/midas.pzl"),
+      include_str!("../../puzzlescripts/advanced/midas.solution"),
+    );
+  }
+
+  #[test]
   fn heroes_of_sokoban_1() {
     won_test(
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
