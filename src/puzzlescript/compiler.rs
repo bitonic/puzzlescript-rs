@@ -148,7 +148,7 @@ fn simplify_rule_direction(rule: &ast::Rule) -> Vec<ast::Rule> {
         ));
         if !symmetric {
           rules.push(with_direction_and_body(
-            ast::RuleDirection::Down,
+            ast::RuleDirection::Up,
             rule.body.clone(),
           ));
         }
@@ -1252,20 +1252,6 @@ mod tests {
   #[test]
   fn tutorial_random_robots_spawner() {
     let file = include_str!("../../puzzlescripts/tutorial/random_robots_spawner.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
-  fn elementary_notsnake() {
-    let file = include_str!("../../puzzlescripts/elementary/notsnake.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
-  fn elementary_zen_puzzle_garden() {
-    let file = include_str!("../../puzzlescripts/elementary/zen_puzzle_garden.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
