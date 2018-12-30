@@ -236,7 +236,7 @@ impl<'a> State<'a> {
             Command::Right => self.move_(Movement::Right),
             Command::Action => self.move_(Movement::Action),
             Command::Undo => {
-              if self.history.len() > 1 {
+              if !self.game.prelude.noundo && self.history.len() > 1 {
                 self.history.pop();
               }
             }
@@ -390,6 +390,14 @@ mod tests {
     won_test(
       include_str!("../../puzzlescripts/intermediate/lime_rick.pzl"),
       include_str!("../../puzzlescripts/intermediate/lime_rick.solution"),
+    );
+  }
+
+  #[test]
+  fn intermediate_octat() {
+    won_test(
+      include_str!("../../puzzlescripts/intermediate/octat.pzl"),
+      include_str!("../../puzzlescripts/intermediate/octat.solution"),
     );
   }
 
