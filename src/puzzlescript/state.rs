@@ -362,10 +362,26 @@ mod tests {
   }
 
   #[test]
+  fn elementary_notsnake() {
+    won_test(
+      include_str!("../../puzzlescripts/elementary/notsnake.pzl"),
+      include_str!("../../puzzlescripts/elementary/notsnake.solution"),
+    );
+  }
+
+  #[test]
   fn elementary_microban() {
     won_test(
       include_str!("../../puzzlescripts/elementary/microban.pzl"),
       include_str!("../../puzzlescripts/elementary/microban.solution"),
+    );
+  }
+
+  #[test]
+  fn elementary_zen_puzzle_garden() {
+    won_test(
+      include_str!("../../puzzlescripts/elementary/zen_puzzle_garden.pzl"),
+      include_str!("../../puzzlescripts/elementary/zen_puzzle_garden.solution"),
     );
   }
 
