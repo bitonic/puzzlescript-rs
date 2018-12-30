@@ -257,12 +257,13 @@ struct MatchedCellsCandidate<'a> {
   bindings: PropertyBindings,
 }
 
-/// returns whether the rule body could be applied. here "could be applied"
-/// means:
-///
-/// * For normal rule bodies, that they matched and that applying them changed
-///   something;
-/// * For "no consequence" rule bodies, that they matched.
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum RuleBodyMatch {
+  NoMatch,
+  /// the bool indicates whether the match changed something
+  Match(bool),
+}
+
 fn apply_rule_body<'a>(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
@@ -270,7 +271,7 @@ fn apply_rule_body<'a>(
   axis: grid::SliceAxis,
   reversed: bool,
   rule_body: &'a RuleBody,
-) -> bool {
+) -> RuleBodyMatch {
   let available_slices = match axis {
     grid::SliceAxis::Row => stage.nrows(),
     grid::SliceAxis::Col => stage.ncols(),
@@ -306,10 +307,11 @@ fn apply_rule_body<'a>(
         }
 
         // we could not match this matcher in any way. give up.
-        return false;
+        return RuleBodyMatch::NoMatch;
       }
 
-      true
+      // no consequence bodies never change anything
+      RuleBodyMatch::Match(false)
     }
     RuleBody::Normal(matchers) => {
       // for normal matchers we must try all possible configurations until
@@ -354,7 +356,7 @@ fn apply_rule_body<'a>(
         }
 
         // we could not match this matcher in any way. give up directly.
-        return false;
+        return RuleBodyMatch::NoMatch;
       }
 
       // now, loop until we find a configuration that changes something, or
@@ -381,7 +383,7 @@ fn apply_rule_body<'a>(
         }
         // if something _did_ change, we're done
         if something_changed {
-          return true;
+          return RuleBodyMatch::Match(true);
         }
 
         // otherwise, try to find a new configuration
@@ -443,7 +445,7 @@ fn apply_rule_body<'a>(
         }
         // if we didn't find anything new, give up
         if !new_configuration {
-          return false;
+          return RuleBodyMatch::Match(false); // we still match, but nothing came out of it.
         }
         // otherwise, keep looping with the new matches
         matches = new_matches;
@@ -452,13 +454,39 @@ fn apply_rule_body<'a>(
   }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone)]
+enum ApplyRule {
+  /// level must be restarted
+  Restart,
+  /// current turn must be cancelled
+  Cancel,
+  /// this message must be displayed --- note that the stage / sounds might still be changed.
+  Message(Rc<str>),
+  /// something has changed
+  Changed,
+  /// nothing has changed
+  Nothing,
+}
+
+macro_rules! apply_rule_changed {
+  ($arg:expr) => {{
+    match $arg {
+      ApplyRule::Restart => return ApplyRule::Restart,
+      ApplyRule::Cancel => return ApplyRule::Cancel,
+      ApplyRule::Message(msg) => return ApplyRule::Message(msg),
+      ApplyRule::Changed => true,
+      ApplyRule::Nothing => false,
+    }
+  }};
+}
+
 fn apply_rule(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
-  commands: &mut Vec<RuleCommand>,
+  sounds: &mut HashSet<SoundFx>,
   rule: &Rule,
-) -> bool {
+) -> ApplyRule {
   let (axis, reversed) = match rule.direction {
     RuleDirection::Down => (grid::SliceAxis::Col, false),
     RuleDirection::Up => (grid::SliceAxis::Col, true),
@@ -474,59 +502,141 @@ fn apply_rule(
     reversed,
     &rule.body,
   );
-  if matched {
-    verbose_log!("Rule {} {} applied.", rule.line_number, rule.direction);
-    for command in rule.commands.clone() {
-      commands.push(command.clone());
-      // exit early on cancel, since the original puzzlescript allows
-      // you to write rules that match forever + cancel or restart
-      //
-      // TODO Have this to be more structured, go all the way up with
-      // an explicit Cancel / Restart rather than a boolean
-      if command == RuleCommand::Cancel || command == RuleCommand::Restart {
-        return false;
+  let num_sounds_before = sounds.len();
+  match matched {
+    RuleBodyMatch::NoMatch => ApplyRule::Nothing,
+    RuleBodyMatch::Match(changed) => {
+      for command in rule.commands.iter() {
+        match command {
+          RuleCommand::Message(msg) => {
+            verbose_log!(
+              "Rule {} {} matched and triggered a message.",
+              rule.line_number,
+              rule.direction
+            );
+            // TODO should we keep going and then print the message at the end? that seems
+            // a bit more sensible but makes the semantics more complicated -- what happens with
+            // multiple conflicting messages, or a message and a cancel (who wins)?
+            return ApplyRule::Message(msg.clone());
+          }
+          RuleCommand::Sound(sfx) => {
+            sounds.insert(*sfx);
+          }
+          RuleCommand::Cancel => {
+            verbose_log!(
+              "Rule {} {} matched and triggered a cancel.",
+              rule.line_number,
+              rule.direction
+            );
+            return ApplyRule::Cancel;
+          }
+          RuleCommand::Restart => {
+            verbose_log!(
+              "Rule {} {} matched and triggered a restart.",
+              rule.line_number,
+              rule.direction
+            );
+            return ApplyRule::Restart;
+          }
+          RuleCommand::Again => {
+            panic!("TODO again");
+          }
+        }
+      }
+
+      let sounds_changed = num_sounds_before != sounds.len();
+      if changed && sounds_changed {
+        verbose_log!(
+          "Rule {} {} matched and changed the stage and sounds.",
+          rule.line_number,
+          rule.direction
+        );
+      } else if changed {
+        verbose_log!(
+          "Rule {} {} matched and changed the stage.",
+          rule.line_number,
+          rule.direction
+        );
+      } else if sounds_changed {
+        verbose_log!(
+          "Rule {} {} matched and changed the sounds.",
+          rule.line_number,
+          rule.direction
+        );
+      } else {
+        verbose_log!(
+          "Rule {} {} matched without changing anything.",
+          rule.line_number,
+          rule.direction
+        );
+      }
+      if changed || sounds_changed {
+        ApplyRule::Changed
+      } else {
+        ApplyRule::Nothing
       }
     }
-  };
-  matched
+  }
 }
 
 fn apply_rule_group(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
-  commands: &mut Vec<RuleCommand>,
+  sounds: &mut HashSet<SoundFx>,
   rule_group: &RuleGroup,
-) -> bool {
+) -> ApplyRule {
   if rule_group.random {
     panic!("TODO random");
   }
   let mut keep_going = true;
-  let mut any_matched = false;
+  let mut something_changed = false;
+
   while keep_going {
     keep_going = false;
     for rule in rule_group.rules.iter() {
-      let matched = apply_rule(properties, collision_layers, stage, commands, rule);
-      keep_going = keep_going || matched;
-      any_matched = any_matched || matched;
+      let changed = apply_rule_changed!(apply_rule(
+        properties,
+        collision_layers,
+        stage,
+        sounds,
+        rule
+      ));
+      keep_going = keep_going || changed;
+      something_changed = something_changed || changed;
     }
   }
-  any_matched
+
+  if something_changed {
+    ApplyRule::Changed
+  } else {
+    ApplyRule::Nothing
+  }
 }
 
 fn apply_rule_groups(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
   stage: &mut Stage,
-  commands: &mut Vec<RuleCommand>,
+  sounds: &mut HashSet<SoundFx>,
   rule_groups: &[RuleGroup],
-) -> bool {
-  let mut any_matched = false;
+) -> ApplyRule {
+  let mut something_changed = false;
   for rule_group in rule_groups {
-    let matched = apply_rule_group(properties, collision_layers, stage, commands, rule_group);
-    any_matched = any_matched || matched;
+    let changed = apply_rule_changed!(apply_rule_group(
+      properties,
+      collision_layers,
+      stage,
+      sounds,
+      rule_group
+    ));
+    something_changed = something_changed || changed;
   }
-  any_matched
+  if something_changed {
+    ApplyRule::Changed
+  } else {
+    ApplyRule::Nothing
+  }
 }
 
 fn apply_movement(collision_layers_info: &CollisionLayersInfo, stage: &mut Stage) -> bool {
@@ -705,14 +815,15 @@ fn check_win_conditions(win_conditions: &[WinCondition], stage: &Stage) -> bool 
 pub enum Advance {
   /// Nothing happened
   Nothing,
-  /// Some movement / rules happened
-  Active(Stage),
-  /// We've won the current stage
-  Won(Stage),
   /// We need to restart the level
   Restart,
-  /// We need to display a message
-  Message(Stage, Rc<str>),
+  /// Some movement / rules / sounds happened
+  Active(Stage, HashSet<SoundFx>),
+  /// We've won the current stage
+  Won(Stage, HashSet<SoundFx>),
+  /// Play the given sounds and display the message, then resume with the
+  /// given stage
+  Message(HashSet<SoundFx>, Rc<str>, Stage),
 }
 
 struct CollisionLayersInfo<'a> {
@@ -732,21 +843,6 @@ impl<'a> CollisionLayersInfo<'a> {
 
 /// returns whether the winning conditions were satisfied
 pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) -> Advance {
-  let mut stage = old_stage.clone();
-
-  // apply movement to player
-  match mb_movement {
-    None => (),
-    Some(movement) =>
-      for cell in stage.iter_mut() {
-        for player in game.players.iter() {
-          if cell.contains_key(player) {
-            cell[player] = movement;
-          }
-        }
-      }
-  }
-
   // build a map from each object to a collision layer id
   let collision_layers_info = CollisionLayersInfo {
     layers: &game.collision_layers,
@@ -766,43 +862,83 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
     },
   };
 
-  let mut active = false;
-  let mut commands = Vec::new();
+  let mut stage = old_stage.clone();
+
+  // apply movement to player
+  match mb_movement {
+    None => (),
+    Some(movement) => {
+      for cell in stage.iter_mut() {
+        for player in game.players.iter() {
+          if cell.contains_key(player) {
+            cell[player] = movement;
+          }
+        }
+      }
+    }
+  }
+
+  let mut something_changed = false;
+  let mut sounds = HashSet::new();
+
   verbose_log!("# Applying rules");
-  active = apply_rule_groups(
+  something_changed = match apply_rule_groups(
     &game.properties,
     &collision_layers_info,
     &mut stage,
-    &mut commands,
+    &mut sounds,
     &game.rules,
-  ) || active;
+  ) {
+    ApplyRule::Restart => return Advance::Restart,
+    ApplyRule::Cancel => return Advance::Nothing,
+    ApplyRule::Message(msg) => return Advance::Message(sounds, msg, stage),
+    ApplyRule::Changed => true,
+    ApplyRule::Nothing => false,
+  } || something_changed;
+
   verbose_log!("# Applying movement");
-  active = apply_movement(&collision_layers_info, &mut stage) || active;
+  something_changed = apply_movement(&collision_layers_info, &mut stage) || something_changed;
+
   verbose_log!("# Applying late rules");
-  active = apply_rule_groups(
+  something_changed = match apply_rule_groups(
     &game.properties,
     &collision_layers_info,
     &mut stage,
-    &mut commands,
+    &mut sounds,
     &game.late_rules,
-  ) || active;
+  ) {
+    ApplyRule::Restart => return Advance::Restart,
+    ApplyRule::Cancel => return Advance::Nothing,
+    ApplyRule::Message(msg) => return Advance::Message(sounds, msg, stage),
+    ApplyRule::Changed => true,
+    ApplyRule::Nothing => false,
+  } || something_changed;
   if has_movement(&stage) {
     panic!("Got movement after late rules!");
   };
-  for command in commands {
-    match command {
-      RuleCommand::Sound(_) => (), // TODO sounds
-      RuleCommand::Cancel => return Advance::Nothing,
-      RuleCommand::Restart => return Advance::Restart,
-      RuleCommand::Message(msg) => return Advance::Message(stage, msg),
-      command => panic!("TODO command: {:?}", command),
+
+  // if required, check that the player has moved
+  if game.prelude.require_player_movement {
+    let is_player_cell = |cell: &Cell| {
+      for player in game.players.iter() {
+        if cell.contains_key(player) {
+          return true;
+        }
+      }
+      false
+    };
+    let original_movement = old_stage.iter().position(is_player_cell);
+    let new_movement = stage.iter().position(is_player_cell);
+    if original_movement == new_movement {
+      return Advance::Nothing;
     }
   }
+
   let won = check_win_conditions(&game.win_conditions, &stage);
   if won {
-    Advance::Won(stage)
-  } else if active {
-    Advance::Active(stage)
+    Advance::Won(stage, sounds)
+  } else if something_changed {
+    Advance::Active(stage, sounds)
   } else {
     Advance::Nothing
   }
