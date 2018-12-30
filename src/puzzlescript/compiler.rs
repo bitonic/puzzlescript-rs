@@ -1257,22 +1257,8 @@ mod tests {
   }
 
   #[test]
-  fn intermediate_lime_rick() {
-    let file = include_str!("../../puzzlescripts/intermediate/lime_rick.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
   fn intermediate_constellation_z() {
     let file = include_str!("../../puzzlescripts/intermediate/constellation_z.pzl");
-    let ast = parser::parse(file).unwrap();
-    compile(&ast).unwrap();
-  }
-
-  #[test]
-  fn advanced_midas() {
-    let file = include_str!("../../puzzlescripts/advanced/midas.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
