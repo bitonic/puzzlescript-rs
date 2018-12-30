@@ -386,6 +386,14 @@ mod tests {
   }
 
   #[test]
+  fn intermediate_lime_rick() {
+    won_test(
+      include_str!("../../puzzlescripts/intermediate/lime_rick.pzl"),
+      include_str!("../../puzzlescripts/intermediate/lime_rick.solution"),
+    );
+  }
+
+  #[test]
   fn heroes_of_sokoban_1() {
     won_test(
       include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
