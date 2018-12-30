@@ -23,16 +23,16 @@ where
 
 #[macro_export]
 macro_rules! verbose_log {
-    () => ($crate::puzzlescript::logging::_verbose_log(|| "".to_string()));
-    ($($arg:tt)*) => ({
-        $crate::puzzlescript::logging::_verbose_log(|| format!($($arg)*));
-    })
+  () => ($crate::puzzlescript::logging::_verbose_log(|| "".to_string()));
+  ($($arg:tt)*) => ({
+    $crate::puzzlescript::logging::_verbose_log(|| format!($($arg)*));
+  })
 }
 
 #[macro_export]
 macro_rules! debug_log {
-    () => ($crate::puzzlescript::logging::_debug_log(|| "".to_string()));
-    ($($arg:tt)*) => ({
-        $crate::puzzlescript::logging::_debug_log(|| format!($($arg)*));
-    })
+  () => ($crate::puzzlescript::logging::_debug_log(|| "".to_string()));
+  ($($arg:tt)*) => ({
+    $crate::puzzlescript::logging::_debug_log(|| format!($($arg)*));
+  })
 }

@@ -93,8 +93,13 @@ impl<'a> State<'a> {
         ref background,
       } if self.game.prelude.run_rules_on_level_start => {
         verbose_log!("Executing rules on level start");
-        let mut new_stage = stage.clone();
-        engine::advance(self.game, &mut new_stage);
+        let new_stage = match engine::advance(self.game, &stage, None) {
+          engine::Advance::Nothing => stage.clone(),
+          engine::Advance::Active(new_stage) => new_stage,
+          engine::Advance::Won(_) => panic!("TODO Won when executing rules at beginning of level!"),
+          engine::Advance::Restart => panic!("TODO Restart when executing rules at beginning of level!"),
+          engine::Advance::Message(_, _) => panic!("TODO Won when executing rules at beginning of level!"),
+        };
         Level::Stage {
           stage: new_stage,
           background: background.clone(),
@@ -137,18 +142,9 @@ impl<'a> State<'a> {
           background: background.clone(),
           stage: new_stage,
         };
-        let mut new_stage = stage.clone();
-        // otherwise, create a new stage and apply movement
-        for cell in new_stage.iter_mut() {
-          for player in self.game.players.iter() {
-            if cell.contains_key(player) {
-              cell[player] = movement;
-            }
-          }
-        }
         // then do the thing
-        match engine::advance(&self.game, &mut new_stage) {
-          engine::Advance::Won =>
+        match engine::advance(&self.game, &stage, Some(movement)) {
+          engine::Advance::Won(new_stage) =>
           // if we've won, change the status to winning
           {
             if has_next_level {
@@ -167,7 +163,7 @@ impl<'a> State<'a> {
             // undo beyond the restart
             self.push_level(last_state.level_number);
           }
-          engine::Advance::Active =>
+          engine::Advance::Active(new_stage) =>
           // otherwise keep going
           {
             self.history.push(LevelState {
@@ -175,7 +171,7 @@ impl<'a> State<'a> {
               level: next_level(new_stage),
             })
           }
-          engine::Advance::Message(message) =>
+          engine::Advance::Message(new_stage, message) =>
           // if we need to display a message we still need to advance
           // the state
           {
@@ -330,8 +326,8 @@ mod tests {
   #[test]
   fn elementary_block_faker() {
     won_test(
-      include_str!("../../puzzlescripts/tutorial/block_faker.pzl"),
-      include_str!("../../puzzlescripts/tutorial/block_faker.solution"),
+      include_str!("../../puzzlescripts/elementary/block_faker.pzl"),
+      include_str!("../../puzzlescripts/elementary/block_faker.solution"),
     );
   }
 
