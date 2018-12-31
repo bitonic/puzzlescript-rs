@@ -3,7 +3,6 @@ use crate::math::*;
 use crate::puzzlescript::ast::*;
 use crate::puzzlescript::colors::*;
 use failure::Fail;
-use lazy_static::*;
 use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
@@ -85,32 +84,9 @@ fn assert_found<F>(what: &str, x: Option<F>) -> Result<F, ErrorMsg> {
   }
 }
 
-lazy_static! {
-  static ref ENTITY_NAME_SYMBOLS: HashSet<char> = {
-    let mut chars = HashSet::new();
-    chars.insert('.');
-    chars.insert('#');
-    chars.insert('*');
-    chars.insert('[');
-    chars.insert(']');
-    chars.insert('{');
-    chars.insert('}');
-    chars.insert('@');
-    chars.insert('_');
-    chars.insert(',');
-    chars.insert('`');
-    chars.insert('\'');
-    chars.insert('~');
-    chars.insert(';');
-    chars.insert('$');
-    chars.insert('-');
-    chars.insert('|');
-    chars
-  };
-}
-
 fn is_entity_name_symbol(ch: char) -> bool {
-  ch.is_digit(10) || ENTITY_NAME_SYMBOLS.contains(&ch)
+  // TODO this is probably a bad idea, we should use unicode categories
+  !ch.is_whitespace()
 }
 
 fn parse_color(str: &str) -> Result<Color, ErrorMsg> {
