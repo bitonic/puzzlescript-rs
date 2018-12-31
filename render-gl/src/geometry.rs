@@ -4,8 +4,8 @@ use gleam::gl;
 use std::mem::size_of;
 use std::rc::Rc;
 
-use crate::render::shader::*;
-use crate::render::texture::*;
+use crate::shader::*;
+use crate::texture::*;
 
 /// stores three indices for the vertices of the triangles in some
 #[derive(Debug, Clone, Copy)]
@@ -24,6 +24,7 @@ pub struct ColoredVertex {
 }
 
 enum GeometrySpecInternal<'gl> {
+  #[allow(dead_code)]
   Bare,
   Colored,
   Textured(Rc<Texture<'gl>>),
@@ -43,8 +44,10 @@ pub struct Geometry<'gl> {
 }
 
 pub enum GeometrySpec<'gl, 'a> {
+  #[allow(dead_code)]
   Bare(&'a [Vector2<f32>]),
   Colored(&'a [ColoredVertex]),
+  #[allow(dead_code)]
   Textured(Rc<Texture<'gl>>, &'a [TexturedVertex]),
 }
 

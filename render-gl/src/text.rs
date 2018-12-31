@@ -1,14 +1,14 @@
+use crate::layout::*;
 use crate::math::*;
-use crate::render::layout::*;
-use crate::render::shader::*;
-use crate::render::texture::*;
+use crate::shader::*;
+use crate::texture::*;
 use failure::Error;
 use gleam::gl;
-use glutin::dpi::LogicalSize;
 use std::collections::HashMap;
 use std::mem::size_of;
 use std::ptr;
 use std::rc::Rc;
+use winit::dpi::LogicalSize;
 
 #[derive(Debug, PartialEq, Clone, Copy)]
 pub struct GlyphMetrics {
@@ -122,8 +122,8 @@ impl<'gl> Face<'gl> {
     // setup shader
     let shader = Shader::new(
       gl,
-      include_str!("../../shaders/glyph.vert"),
-      include_str!("../../shaders/glyph.frag"),
+      include_str!("../shaders/glyph.vert"),
+      include_str!("../shaders/glyph.frag"),
     )?;
     let text_color_location = shader.uniform_location("text_color")?;
 

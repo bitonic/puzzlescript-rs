@@ -13,7 +13,7 @@ $ curl https://sh.rustup.rs -sSf | sh
 then
 
 ```
-$ cargo run -- puzzlescripts/third_party/heroes_of_sokoban_1.pzl
+$ cargo run -- core/puzzlescripts/third_party/heroes_of_sokoban_1.pzl
 ```
 
 The only external dependencies are FreeType and OpenGL.

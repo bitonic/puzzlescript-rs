@@ -9,6 +9,7 @@ pub struct AreaView {
 
 impl AreaView {
   #[rustfmt::skip]
+  #[allow(dead_code)]
   pub fn to_matrix(&self, aspect_ratio: f32) -> Matrix3<f32> {
     let size_x = self.width(aspect_ratio);
     let size_y = self.height(aspect_ratio);

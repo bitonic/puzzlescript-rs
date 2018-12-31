@@ -1,7 +1,7 @@
-use crate::render::*;
 use failure::{Error, Fail};
 use gleam::gl;
 use glutin::*;
+use serde_json;
 use std::collections::HashMap;
 use std::fs;
 use std::fs::File;
@@ -11,24 +11,15 @@ use std::sync::atomic::Ordering;
 use std::time::SystemTime;
 use structopt::StructOpt;
 
-#[macro_use]
-pub mod logging;
+use puzzlescript_core::colors::*;
+use puzzlescript_core::state::*;
+use puzzlescript_core::*;
+use puzzlescript_render_gl as render;
 
-pub mod ast;
-pub mod colors;
-pub mod compiler;
-pub mod engine;
-pub mod game;
-pub mod parser;
-pub mod render;
-pub mod state;
-
-use self::colors::*;
-use self::logging::*;
-use self::state::*;
+mod window;
 
 #[derive(Debug, StructOpt)]
-pub struct Opts {
+struct Opts {
   #[structopt(parse(from_os_str))]
   input: PathBuf,
   #[structopt(long = "save-to", parse(from_os_str))]
@@ -45,19 +36,19 @@ pub struct Opts {
 
 struct SizeState<'gl> {
   window_size: dpi::LogicalSize,
-  font: Face<'gl>,
+  font: render::text::Face<'gl>,
 }
 
 impl<'gl> SizeState<'gl> {
   #[allow(clippy::new_ret_no_self)]
-  pub fn new(gl_window: &glutin::GlWindow, gl: &'gl gl::Gl) -> Result<SizeState<'gl>, Error> {
+  fn new(gl_window: &glutin::GlWindow, gl: &'gl gl::Gl) -> Result<SizeState<'gl>, Error> {
     let hidpi_factor = gl_window.get_hidpi_factor();
     // TODO do not reload the font unless hidpi changed
     Ok(SizeState {
       window_size: gl_window.get_inner_size().unwrap(),
-      font: Face::new(
+      font: render::text::Face::new(
         &*gl,
-        Rc::new(include_bytes!("../../assets/fonts/IM-Fell-Double-Pica-Pro-Italic.otf").to_vec()),
+        Rc::new(include_bytes!("../assets/fonts/IM-Fell-Double-Pica-Pro-Italic.otf").to_vec()),
         hidpi_factor,
         40,
       )?,
@@ -67,11 +58,26 @@ impl<'gl> SizeState<'gl> {
 
 #[derive(Debug, Fail)]
 #[fail(display = "Puzzlescript execution error: {}", msg)]
-pub struct PuzzlescriptError {
-  pub msg: String,
+struct PuzzlescriptError {
+  msg: String,
 }
 
-pub fn run(opts: Opts) -> Result<(), Error> {
+fn save_state<'a, W>(state: &State<'a>, writer: W) -> serde_json::Result<()>
+where
+  W: std::io::Write,
+{
+  serde_json::to_writer(writer, &state.save())
+}
+
+fn restore_state<'a, R>(game: &'a game::Game, reader: R) -> serde_json::Result<State<'a>>
+where
+  R: std::io::Read,
+{
+  let serialized_state: SerializableState = serde_json::from_reader(reader)?;
+  Ok(State::restore(game, serialized_state))
+}
+
+fn run(opts: Opts) -> Result<(), Error> {
   let src: String = fs::read_to_string(opts.input)?;
   let game = {
     let ast = parser::parse(&src)?;
@@ -103,14 +109,14 @@ pub fn run(opts: Opts) -> Result<(), Error> {
   };
   let (mut events_loop, gl_window, gl) = window::init(title, false)?;
 
-  let object_shader = self::render::ObjectShader::new(&*gl)?;
+  let object_shader = render::ObjectShader::new(&*gl)?;
 
   let object_sprites = {
     let mut object_sprites = HashMap::new();
     for (object_name, object) in game.objects.iter() {
       object_sprites.insert(
         object_name.clone(),
-        self::render::ObjectSprite::new(
+        render::ObjectSprite::new(
           &*gl,
           object_shader.clone(),
           game.prelude.color_palette,
@@ -125,10 +131,10 @@ pub fn run(opts: Opts) -> Result<(), Error> {
   let foreground_color = game.prelude.text_color;
   let background_color_f32 = to_float_color(game.prelude.color_palette, background_color);
   gl.clear_color(
-    background_color_f32[0],
-    background_color_f32[1],
-    background_color_f32[2],
-    background_color_f32[3],
+    background_color_f32.r(),
+    background_color_f32.g(),
+    background_color_f32.b(),
+    background_color_f32.a(),
   );
 
   let mut size_state = SizeState::new(&gl_window, &*gl)?;
@@ -145,7 +151,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
       (mb_start_level, None, None) => (State::new(&game, mb_start_level), Vec::new()),
       (None, Some(ref restore_from), None) => {
         let restore_from_file = File::open(restore_from)?;
-        (State::restore(&game, restore_from_file)?, Vec::new())
+        (restore_state(&game, restore_from_file)?, Vec::new())
       }
       (None, None, Some(ref replay_from)) => {
         let replay_from_file = File::open(replay_from)?;
@@ -224,7 +230,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
         }
         Some(ref save_to) => {
           let save_to_file = File::create(save_to)?;
-          game_state.save(save_to_file)?;
+          save_state(&game_state, save_to_file)?;
           eprintln!("State saved to {:?}", save_to);
         }
       }
@@ -237,7 +243,7 @@ pub fn run(opts: Opts) -> Result<(), Error> {
 
     game_state.update(dt, mb_command);
 
-    self::render::draw_level(
+    render::draw_level(
       &size_state.window_size,
       game.prelude.color_palette,
       foreground_color,
@@ -251,4 +257,8 @@ pub fn run(opts: Opts) -> Result<(), Error> {
   }
 
   Ok(())
+}
+
+fn main() {
+  run(Opts::from_args()).unwrap()
 }

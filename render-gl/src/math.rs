@@ -7,6 +7,7 @@ where
   nalgebra::Vector2::new(x, y)
 }
 
+#[allow(dead_code)]
 pub fn vec3<T: 'static>(x: T, y: T, z: T) -> Vector3<T>
 where
   T: std::fmt::Debug + PartialEq + Copy,

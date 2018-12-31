@@ -1,9 +1,6 @@
 use crate::math::*;
-use glutin::dpi::LogicalSize;
 use std::ops::{Add, AddAssign};
-
-/// Basic unit we use for a lot of layouting
-pub const LAYOUT_UNIT: u32 = 10;
+use winit::dpi::LogicalSize;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum LayoutOrigin {
@@ -104,7 +101,7 @@ pub fn layout_scale(window_size: &LogicalSize) -> Vector2<f64> {
 #[cfg(test)]
 mod tests {
   use super::*;
-  use glutin::dpi::LogicalSize;
+  use winit::dpi::LogicalSize;
 
   const SAME_SIZE: LogicalSize = LogicalSize {
     width: 2.0,
