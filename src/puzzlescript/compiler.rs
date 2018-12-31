@@ -409,6 +409,16 @@ impl<'a> CompileState<'a> {
           self
             .legend
             .insert(legend_name.clone(), self.legend[target].clone());
+          match self.legend[target] {
+            LegendBody::Aggregate(_) => (),
+            // if it's an alias to property, add this to the properties as well
+            LegendBody::Property(_) => {
+              self
+                .game
+                .properties
+                .insert(legend_name.clone(), self.game.properties[target].clone());
+            }
+          }
         }
 
         // if it's an aggregate, check that it only refers to objects and other
