@@ -16,8 +16,6 @@ homepage www.increpare.com
 run_rules_on_level_start
 norepeat_action
 
-verbose_logging
-
 ========
 OBJECTS
 ========
