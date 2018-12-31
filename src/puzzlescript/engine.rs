@@ -55,6 +55,13 @@ fn match_cell(
             }
           }
         } else {
+          if !properties.contains_key(property) {
+            println!(
+              "Cannot find property {} in properties {:?}!",
+              property,
+              properties.keys()
+            );
+          }
           for property_object in properties[property].iter() {
             match cell.get(property_object) {
               None => (),
@@ -176,7 +183,14 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
                   cells[cell_ix].insert(object, movement);
                 }
               }
-              RHSEntity::Random(_) => panic!("TODO random"),
+              RHSEntity::Random(objects) => {
+                let ix = rand.next() % objects.len() as u32;
+                let object = objects.iter().nth(ix as usize).unwrap().clone();
+                for other_object in collision_layers.objects_in_same_layer(&object) {
+                  cells[cell_ix].remove(other_object);
+                }
+                cells[cell_ix].insert(object, Movement::Stationary);
+              }
             }
           }
           if cells[cell_ix] != old_cell {
