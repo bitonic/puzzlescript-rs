@@ -8,19 +8,20 @@ pub struct State {
 
 fn temper(mut x: u32) -> u32 {
   x ^= x.wrapping_shr(11);
-  x ^= x.wrapping_shl(7) & 0x9D2C5680;
-  x ^= x.wrapping_shl(15) & 0xEFC60000;
+  x ^= x.wrapping_shl(7) & 0x9D2C_5680;
+  x ^= x.wrapping_shl(15) & 0xEFC6_0000;
   x ^= x.wrapping_shr(18);
   x
 }
 
+#[allow(clippy::should_implement_trait)]
 impl State {
   pub fn new(seed: usize) -> State {
     State { seed: seed as u32 }
   }
 
   pub fn next(&mut self) -> u32 {
-    self.seed = self.seed.wrapping_mul(1103515245).wrapping_add(12345);
+    self.seed = self.seed.wrapping_mul(1_103_515_245).wrapping_add(12_345);
     temper(self.seed) / 2
   }
 }
