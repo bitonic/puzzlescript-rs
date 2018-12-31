@@ -4,6 +4,7 @@ use image::{DynamicImage, GenericImageView};
 
 #[derive(Debug, Clone, Copy)]
 pub enum TextureWrap {
+  #[allow(dead_code)]
   Repeat,
   ClampToEdge,
 }
@@ -19,6 +20,7 @@ impl TextureWrap {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum TextureMinFilter {
   Nearest,
   Linear,
@@ -43,6 +45,7 @@ impl TextureMinFilter {
 }
 
 #[derive(Debug, Clone, Copy)]
+#[allow(dead_code)]
 pub enum TextureMagFilter {
   Nearest,
   Linear,

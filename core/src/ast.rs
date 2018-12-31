@@ -1,6 +1,6 @@
 // TODO change from Normal / Ellipsis to separate LHS and RHS
+use crate::colors::*;
 use crate::grid::*;
-use crate::puzzlescript::colors::*;
 use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::rc::Rc;

@@ -1,12 +1,32 @@
+extern crate failure;
+extern crate freetype;
+extern crate gleam;
+extern crate image;
+extern crate nalgebra;
+extern crate puzzlescript_core;
+
+mod area_view;
+mod fixed_view;
+mod geometry;
+mod layout;
+mod math;
+mod shader;
+pub mod text;
+mod texture;
+
+use crate::fixed_view::*;
+use crate::geometry::*;
+use crate::layout::*;
 use crate::math::*;
-use crate::puzzlescript::colors::*;
-use crate::puzzlescript::game::*;
-use crate::render::*;
+use crate::puzzlescript_core::colors::*;
+use crate::puzzlescript_core::game::*;
+use crate::shader::*;
+use crate::text::*;
 use failure::Error;
 use gleam::gl;
-use glutin::dpi;
 use std::collections::HashMap;
 use std::rc::Rc;
+use winit::dpi;
 
 /// 1x1, each of those fits in a cell
 pub struct ObjectSprite<'gl> {
@@ -24,11 +44,15 @@ impl<'gl> ObjectShader<'gl> {
     Ok(ObjectShader {
       shader: Rc::new(Shader::new(
         gl,
-        include_str!("../../shaders/colored.vert"),
-        include_str!("../../shaders/colored.frag"),
+        include_str!("../shaders/colored.vert"),
+        include_str!("../shaders/colored.frag"),
       )?),
     })
   }
+}
+
+fn to_vector_color(rgba: RGBA<f32>) -> Vector4<f32> {
+  vec4(rgba.r(), rgba.g(), rgba.b(), rgba.a())
 }
 
 impl<'gl> ObjectSprite<'gl> {
@@ -41,7 +65,7 @@ impl<'gl> ObjectSprite<'gl> {
   ) -> Result<ObjectSprite<'gl>, Error> {
     match object {
       Object::Empty(pzl_color) => {
-        let color = to_float_color(palette, *pzl_color);
+        let color = to_vector_color(to_float_color(palette, *pzl_color));
         let geometry = Geometry::new(
           gl,
           shader.shader,
@@ -73,7 +97,7 @@ impl<'gl> ObjectSprite<'gl> {
 
         for row in 0..5 {
           for col in 0..5 {
-            let color = to_float_color(palette, squares[(row, col)]);
+            let color = to_vector_color(to_float_color(palette, squares[(row, col)]));
             let x = col as f32 * 0.2;
             let y = row as f32 * 0.2;
 
@@ -149,7 +173,7 @@ pub fn draw_level<'gl>(
     Level::Message(msg) => font.draw(
       window_size,
       msg,
-      &to_float_color(color_palette, foreground_color)
+      &to_vector_color(to_float_color(color_palette, foreground_color))
         .fixed_rows::<U3>(0)
         .clone_owned(),
       &LayoutPosition::new(LayoutOrigin::TopLeft, 40.0, 60.0),

@@ -1,7 +1,9 @@
 // dead simple random number gen, taken from
 // <http://git.musl-libc.org/cgit/musl/commit/?id=20d01d83b5a13c77805976e7c520f566244ba3ff>
 
-#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+use serde_derive::{Deserialize, Serialize};
+
+#[derive(Debug, PartialEq, Eq, Clone, Copy, Serialize, Deserialize)]
 pub struct State {
   seed: u32,
 }

@@ -93,6 +93,7 @@ impl<'gl> Shader<'gl> {
     }
   }
 
+  #[allow(dead_code)]
   pub fn list_uniforms(&self) -> Result<Vec<String>, Error> {
     let mut count: Vec<i32> = vec![-1, 1];
     unsafe {
@@ -110,6 +111,7 @@ impl<'gl> Shader<'gl> {
     Ok(names)
   }
 
+  #[allow(dead_code)]
   pub fn list_attributes(&self) -> Result<Vec<String>, Error> {
     let mut count: Vec<i32> = vec![-1, 1];
     unsafe {

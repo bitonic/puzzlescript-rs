@@ -1,7 +1,9 @@
-use crate::puzzlescript::engine;
-use crate::puzzlescript::game::*;
+use crate::engine;
+use crate::game::*;
 use crate::rand;
 use lazy_static::*;
+use serde_derive;
+use serde_derive::{Deserialize, Serialize};
 use std::rc::Rc;
 use std::time::Duration;
 use std::time::SystemTime;
@@ -59,8 +61,9 @@ pub struct State<'a> {
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
-struct SerializedState {
+pub struct SerializableState {
   history: Vec<LevelState>,
+  rand: rand::State,
   time: Duration,
   status: Status,
 }
@@ -258,32 +261,23 @@ impl<'a> State<'a> {
     }
   }
 
-  pub fn save<W>(&self, writer: W) -> serde_json::Result<()>
-  where
-    W: std::io::Write,
-  {
-    serde_json::to_writer(
-      writer,
-      &SerializedState {
-        history: self.history.clone(),
-        time: self.time,
-        status: self.status.clone(),
-      },
-    )
+  pub fn save(&self) -> SerializableState {
+    SerializableState {
+      rand: self.rand,
+      history: self.history.clone(),
+      time: self.time,
+      status: self.status.clone(),
+    }
   }
 
-  pub fn restore<R>(game: &'a Game, reader: R) -> serde_json::Result<State<'a>>
-  where
-    R: std::io::Read,
-  {
-    let serialized_state: SerializedState = serde_json::from_reader(reader)?;
-    Ok(State {
+  pub fn restore(game: &'a Game, serialized_state: SerializableState) -> State<'a> {
+    State {
       game,
-      rand: rand::State::new(0),
+      rand: serialized_state.rand,
       history: serialized_state.history,
       time: serialized_state.time,
       status: serialized_state.status,
-    })
+    }
   }
 
   pub fn replay(game: &'a Game, commands: &[Command]) -> State<'a> {
@@ -302,9 +296,9 @@ impl<'a> State<'a> {
 
 #[cfg(test)]
 mod tests {
-  use crate::puzzlescript::compiler;
-  use crate::puzzlescript::parser;
-  use crate::puzzlescript::state::*;
+  use crate::compiler;
+  use crate::parser;
+  use crate::state::*;
 
   fn won_test(pzl_src: &str, solution_str: &str) {
     let ast = parser::parse(pzl_src).unwrap();
@@ -320,120 +314,120 @@ mod tests {
   #[test]
   fn tutorial_basic() {
     won_test(
-      include_str!("../../puzzlescripts/tutorial/basic.pzl"),
-      include_str!("../../puzzlescripts/tutorial/basic.solution"),
+      include_str!("../puzzlescripts/tutorial/basic.pzl"),
+      include_str!("../puzzlescripts/tutorial/basic.solution"),
     );
   }
 
   #[test]
   fn tutorial_match_3() {
     won_test(
-      include_str!("../../puzzlescripts/tutorial/match_3.pzl"),
-      include_str!("../../puzzlescripts/tutorial/match_3.solution"),
+      include_str!("../puzzlescripts/tutorial/match_3.pzl"),
+      include_str!("../puzzlescripts/tutorial/match_3.solution"),
     );
   }
 
   #[test]
   fn elementary_block_faker() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/block_faker.pzl"),
-      include_str!("../../puzzlescripts/elementary/block_faker.solution"),
+      include_str!("../puzzlescripts/elementary/block_faker.pzl"),
+      include_str!("../puzzlescripts/elementary/block_faker.solution"),
     );
   }
 
   #[test]
   fn elementary_by_your_side() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/by_your_side.pzl"),
-      include_str!("../../puzzlescripts/elementary/by_your_side.solution"),
+      include_str!("../puzzlescripts/elementary/by_your_side.pzl"),
+      include_str!("../puzzlescripts/elementary/by_your_side.solution"),
     );
   }
 
   #[test]
   fn elementary_kettle() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/kettle.pzl"),
-      include_str!("../../puzzlescripts/elementary/kettle.solution"),
+      include_str!("../puzzlescripts/elementary/kettle.pzl"),
+      include_str!("../puzzlescripts/elementary/kettle.solution"),
     );
   }
 
   #[test]
   fn elementary_neko() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/neko.pzl"),
-      include_str!("../../puzzlescripts/elementary/neko.solution"),
+      include_str!("../puzzlescripts/elementary/neko.pzl"),
+      include_str!("../puzzlescripts/elementary/neko.solution"),
     );
   }
 
   #[test]
   fn elementary_notsnake() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/notsnake.pzl"),
-      include_str!("../../puzzlescripts/elementary/notsnake.solution"),
+      include_str!("../puzzlescripts/elementary/notsnake.pzl"),
+      include_str!("../puzzlescripts/elementary/notsnake.solution"),
     );
   }
 
   #[test]
   fn elementary_microban() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/microban.pzl"),
-      include_str!("../../puzzlescripts/elementary/microban.solution"),
+      include_str!("../puzzlescripts/elementary/microban.pzl"),
+      include_str!("../puzzlescripts/elementary/microban.solution"),
     );
   }
 
   #[test]
   fn elementary_zen_puzzle_garden() {
     won_test(
-      include_str!("../../puzzlescripts/elementary/zen_puzzle_garden.pzl"),
-      include_str!("../../puzzlescripts/elementary/zen_puzzle_garden.solution"),
+      include_str!("../puzzlescripts/elementary/zen_puzzle_garden.pzl"),
+      include_str!("../puzzlescripts/elementary/zen_puzzle_garden.solution"),
     );
   }
 
   #[test]
   fn intermediate_lime_rick() {
     won_test(
-      include_str!("../../puzzlescripts/intermediate/lime_rick.pzl"),
-      include_str!("../../puzzlescripts/intermediate/lime_rick.solution"),
+      include_str!("../puzzlescripts/intermediate/lime_rick.pzl"),
+      include_str!("../puzzlescripts/intermediate/lime_rick.solution"),
     );
   }
 
   #[test]
   fn intermediate_octat() {
     won_test(
-      include_str!("../../puzzlescripts/intermediate/octat.pzl"),
-      include_str!("../../puzzlescripts/intermediate/octat.solution"),
+      include_str!("../puzzlescripts/intermediate/octat.pzl"),
+      include_str!("../puzzlescripts/intermediate/octat.solution"),
     );
   }
 
   #[test]
   fn advanced_midas() {
     won_test(
-      include_str!("../../puzzlescripts/advanced/midas.pzl"),
-      include_str!("../../puzzlescripts/advanced/midas.solution"),
+      include_str!("../puzzlescripts/advanced/midas.pzl"),
+      include_str!("../puzzlescripts/advanced/midas.solution"),
     );
   }
 
   #[test]
   fn heroes_of_sokoban_1() {
     won_test(
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_1.solution"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_1.pzl"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_1.solution"),
     );
   }
 
   #[test]
   fn heroes_of_sokoban_2() {
     won_test(
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.pzl"),
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_2.solution"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_2.pzl"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_2.solution"),
     );
   }
 
   #[test]
   fn heroes_of_sokoban_3() {
     won_test(
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.pzl"),
-      include_str!("../../puzzlescripts/third_party/heroes_of_sokoban_3.solution"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_3.pzl"),
+      include_str!("../puzzlescripts/third_party/heroes_of_sokoban_3.solution"),
     );
   }
 }

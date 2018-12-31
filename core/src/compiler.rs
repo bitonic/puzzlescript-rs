@@ -1,9 +1,9 @@
 // TODO remove panics, use error instead
 // TODO handle `no` better, it's very different from the other qualifiers and
 // we need to special cases in various places...
+use crate::ast;
+use crate::game::*;
 use crate::grid::*;
-use crate::puzzlescript::ast;
-use crate::puzzlescript::game::*;
 use failure::Fail;
 use im_rc::hashmap as im_hashmap;
 use std::collections::hash_map;
@@ -1269,55 +1269,55 @@ pub fn compile(ast: &ast::Ast) -> Result<Game, CompileError> {
 
 #[cfg(test)]
 mod tests {
-  use crate::puzzlescript::compiler::big_cross_product;
-  use crate::puzzlescript::compiler::*;
-  use crate::puzzlescript::parser;
+  use crate::compiler::big_cross_product;
+  use crate::compiler::*;
+  use crate::parser;
 
   #[test]
   fn tutorial_eyeball() {
-    let file = include_str!("../../puzzlescripts/tutorial/eyeball.pzl");
+    let file = include_str!("../puzzlescripts/tutorial/eyeball.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn tutorial_random_robots() {
-    let file = include_str!("../../puzzlescripts/tutorial/random_robots.pzl");
+    let file = include_str!("../puzzlescripts/tutorial/random_robots.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn tutorial_random_robots_spawner() {
-    let file = include_str!("../../puzzlescripts/tutorial/random_robots_spawner.pzl");
+    let file = include_str!("../puzzlescripts/tutorial/random_robots_spawner.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn intermediate_constellation_z() {
-    let file = include_str!("../../puzzlescripts/intermediate/constellation_z.pzl");
+    let file = include_str!("../puzzlescripts/intermediate/constellation_z.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn advanced_2d_whale_world() {
-    let file = include_str!("../../puzzlescripts/advanced/2d_whale_world.pzl");
+    let file = include_str!("../puzzlescripts/advanced/2d_whale_world.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn third_party_w3rds() {
-    let file = include_str!("../../puzzlescripts/third_party/w3rds.pzl");
+    let file = include_str!("../puzzlescripts/third_party/w3rds.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
 
   #[test]
   fn third_party_kraken() {
-    let file = include_str!("../../puzzlescripts/third_party/kraken.pzl");
+    let file = include_str!("../puzzlescripts/third_party/kraken.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }

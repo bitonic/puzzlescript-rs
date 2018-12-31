@@ -1,7 +1,6 @@
+use crate::ast::*;
+use crate::colors::*;
 use crate::grid::Grid;
-use crate::math::*;
-use crate::puzzlescript::ast::*;
-use crate::puzzlescript::colors::*;
 use failure::Fail;
 use std::collections::HashSet;
 use std::fmt;
@@ -98,7 +97,7 @@ fn parse_color(str: &str) -> Result<Color, ErrorMsg> {
 
   if &str[0..1] == "#" {
     if str.len() == 7 {
-      Ok(Color::Hex(vec3(
+      Ok(Color::Hex(RGB::new(
         parse_byte(&str[1..3])?,
         parse_byte(&str[3..5])?,
         parse_byte(&str[5..7])?,
@@ -110,7 +109,7 @@ fn parse_color(str: &str) -> Result<Color, ErrorMsg> {
         ds
       };
 
-      Ok(Color::Hex(vec3(
+      Ok(Color::Hex(RGB::new(
         parse_byte(&double_str(&str[1..2]))?,
         parse_byte(&double_str(&str[2..3]))?,
         parse_byte(&double_str(&str[3..4]))?,
