@@ -49,11 +49,11 @@ impl Section {
   }
 }
 
-struct ParseState<'a> {
+struct ParseState {
   cursor: usize,
   chars: Vec<char>,
   ast: Ast,
-  original_src: &'a str,
+  original_src: Vec<char>,
   section: Section,
 }
 
@@ -183,7 +183,7 @@ fn parse_color_palette(str: &str) -> Result<ColorPalette, ErrorMsg> {
 
 type ParsedMatcher = Vec<CellMatcher<()>>;
 
-impl<'a> ParseState<'a> {
+impl ParseState {
   fn peek_char(&self, ch: char) -> bool {
     if self.cursor < self.chars.len() {
       self.chars[self.cursor] == ch
@@ -321,6 +321,8 @@ impl<'a> ParseState<'a> {
 
     let str_with_comments = if original_src {
       self.original_src[start_cursor..self.cursor]
+        .iter()
+        .collect::<String>()
         .trim()
         .to_string()
     } else {
@@ -1235,7 +1237,7 @@ pub fn parse(str: &str) -> Result<Ast, ParseError> {
     chars: str.to_lowercase().chars().collect(),
     ast: Ast::empty(),
     section: Section::Prelude,
-    original_src: str,
+    original_src: str.chars().collect(),
   };
   match st.run() {
     Err(msg) => {
