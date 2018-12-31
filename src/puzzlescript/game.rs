@@ -70,7 +70,8 @@ pub enum RHSEntity {
     binder: PropertyBinder,
     property: PropertyName, // just for debugging / pretty printing
   },
-  Random(Vec<Vec<ObjectName>>),
+  /// one of these objects
+  Random(HashSet<ObjectName>),
 }
 
 pub type Objects<Object> = Rc<Vec<Object>>;

@@ -694,11 +694,11 @@ impl<'a> CompileState<'a> {
         .flat_map(|match_entity| {
           if match_entity.qualifier == Some(ast::EntityQualifier::Random) {
             vec![match &self.legend[&match_entity.entity] {
-              LegendBody::Aggregate(objects) => {
-                RHSEntity::Random(vec![objects.iter().cloned().collect()])
+              LegendBody::Aggregate(_) => {
+                panic!("TODO random aggregate")
               }
               LegendBody::Property(objects) => {
-                RHSEntity::Random(objects.iter().map(|object| vec![object.clone()]).collect())
+                RHSEntity::Random(objects.clone())
               }
             }]
           } else {
