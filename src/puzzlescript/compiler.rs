@@ -861,37 +861,62 @@ impl<'a> CompileState<'a> {
                       original_qualifier,
                       derived_qualifier,
                       binder,
-                    } => match resolve_qualifier(rule_direction, match_entity.qualifier) {
-                      // if we can resolve a qualifier immediately, use that one -- but
-                      // as explained above, treat passthrough specially
-                      Some(qualifier) => {
-                        let actual_qualifier = if same_cell && qualifier == Qualifier::Passthrough && *derived_qualifier != Qualifier::Passthrough {
-                          Qualifier::Stationary
-                        } else {
-                          qualifier
-                        };
+                    } => {
+                      let with_qualifier = |qualifier| {
                         vec![RHSEntity::Property {
-                          qualifier: actual_qualifier,
+                          qualifier,
                           binder: *binder,
                           property: match_entity.entity.clone(),
                         }]
-                      },
-                      // otherwise, use the one from the LHSInfo
-                      None => {
-                        if original_qualifier == &match_entity.qualifier {
-                          vec![RHSEntity::Property {
-                            qualifier: *derived_qualifier,
-                            binder: *binder,
-                            property: match_entity.entity.clone(),
-                          }]
-                        } else {
-                          panic!(
-                            "Ambiguous, got {:?} on the left but {:?} on the right for entity {:?}",
-                            original_qualifier, match_entity.qualifier, match_entity.entity
-                          )
+                      };
+                      let give_up = ||
+                        panic!(
+                          "Could not resolve ambiguous qualifier {:?} for entity {:?}",
+                          match_entity.qualifier,
+                          match_entity.entity);
+                      match resolve_qualifier(rule_direction, match_entity.qualifier) {
+                        // if we can resolve a qualifier immediately, use that one -- but
+                        // as explained above, treat passthrough specially
+                        Some(qualifier) =>
+                          with_qualifier(
+                            if
+                              same_cell &&
+                              qualifier == Qualifier::Passthrough &&
+                              *derived_qualifier != Qualifier::Passthrough
+                            {
+                              Qualifier::Stationary
+                            } else {
+                              qualifier
+                            }
+                          ),
+                        None => {
+                          // otherwise, first try use the one from the LHSInfo
+                          if original_qualifier == &match_entity.qualifier {
+                            with_qualifier(*derived_qualifier)
+                          } else {
+                            // if that fails too, try to get it from the qualifier map
+                            match overall_lhs_info.get_qualifier(match_entity.qualifier.unwrap()) {
+                              Unique(qualifier_info) => {
+                                match *qualifier_info.entity_info {
+                                  // if the qualifier is attached to a property, just use it
+                                  LHSEntityInfo::Property { ref derived_qualifier, .. } =>
+                                    with_qualifier(*derived_qualifier),
+                                  LHSEntityInfo::Aggregate { ref derived_matchers, .. } =>
+                                    // if it's attached to an aggregate, only accept if it's just one object
+                                    if derived_matchers.len() == 1 {
+                                      with_qualifier(derived_matchers[0].qualifier)
+                                    } else {
+                                      give_up()
+                                    }
+                                }
+                              }
+                              Ambiguous =>
+                                give_up(),
+                            }
+                          }
                         }
                       }
-                    },
+                    }
                   }
                 };
                 // Then, first check if we have a matching property in the same cell:
@@ -1271,8 +1296,15 @@ mod tests {
   }
 
   #[test]
-  fn w3rds() {
+  fn third_party_w3rds() {
     let file = include_str!("../../puzzlescripts/third_party/w3rds.pzl");
+    let ast = parser::parse(file).unwrap();
+    compile(&ast).unwrap();
+  }
+
+  #[test]
+  fn third_party_kraken() {
+    let file = include_str!("../../puzzlescripts/third_party/kraken.pzl");
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
