@@ -1,5 +1,6 @@
 use crate::puzzlescript::engine;
 use crate::puzzlescript::game::*;
+use crate::rand;
 use lazy_static::*;
 use std::rc::Rc;
 use std::time::Duration;
@@ -50,6 +51,7 @@ lazy_static! {
 
 pub struct State<'a> {
   game: &'a Game,
+  rand: rand::State,
   history: Vec<LevelState>,
   /// how long since the game started
   time: Duration,
@@ -93,7 +95,7 @@ impl<'a> State<'a> {
         ref background,
       } if self.game.prelude.run_rules_on_level_start => {
         verbose_log!("Executing rules on level start");
-        let new_stage = match engine::advance(self.game, &stage, None) {
+        let new_stage = match engine::advance(self.game, &mut self.rand, &stage, None) {
           engine::Advance::Nothing => stage.clone(),
           engine::Advance::Active(new_stage, _sounds) => new_stage,
           engine::Advance::Won(_, _) => {
@@ -129,7 +131,7 @@ impl<'a> State<'a> {
   }
 
   fn move_(&mut self, movement: Movement) {
-    let last_state = self.last_state();
+    let last_state = self.history.last().unwrap();
     let has_next_level = self.has_next_level();
     match &last_state.level {
       Level::Message(_) => {
@@ -149,7 +151,7 @@ impl<'a> State<'a> {
           stage: new_stage,
         };
         // then do the thing
-        match engine::advance(&self.game, &stage, Some(movement)) {
+        match engine::advance(&self.game, &mut self.rand, &stage, Some(movement)) {
           engine::Advance::Won(new_stage, _sounds) =>
           // if we've won, change the status to winning
           {
@@ -196,6 +198,7 @@ impl<'a> State<'a> {
   pub fn new(game: &'a Game, starting_level: Option<usize>) -> State<'a> {
     let mut state = State {
       history: vec![],
+      rand: rand::State::new(0),
       game,
       time: Duration::new(0, 0),
       status: Status::Playing,
@@ -276,6 +279,7 @@ impl<'a> State<'a> {
     let serialized_state: SerializedState = serde_json::from_reader(reader)?;
     Ok(State {
       game,
+      rand: rand::State::new(0),
       history: serialized_state.history,
       time: serialized_state.time,
       status: serialized_state.status,

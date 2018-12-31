@@ -17,6 +17,7 @@ use structopt::StructOpt;
 pub mod grid;
 pub mod math;
 pub mod puzzlescript;
+pub mod rand;
 pub mod render;
 
 pub fn run() -> Result<(), failure::Error> {
