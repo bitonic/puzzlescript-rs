@@ -1,5 +1,6 @@
 use crate::grid;
 use crate::puzzlescript::game::*;
+use crate::rand;
 use im_rc::hashmap as im_hashmap;
 use std::collections::{HashMap, HashSet};
 use std::rc::Rc;
@@ -75,7 +76,7 @@ fn match_cell(
 }
 
 /// `None` if 'Qualifier::Passthrough'
-fn qualifier_to_movement(qualifier: Qualifier) -> Option<Movement> {
+fn qualifier_to_movement(rand: &mut rand::State, qualifier: Qualifier) -> Option<Movement> {
   match qualifier {
     Qualifier::Stationary => Some(Movement::Stationary),
     Qualifier::Up => Some(Movement::Up),
@@ -85,7 +86,13 @@ fn qualifier_to_movement(qualifier: Qualifier) -> Option<Movement> {
     Qualifier::Action => Some(Movement::Action),
     Qualifier::Passthrough => None,
     Qualifier::No => panic!("Got 'No' in qualifier_to_movement"),
-    Qualifier::RandomDir => panic!("TODO 'RandomDir' in qualifier_to_movement"),
+    Qualifier::RandomDir => Some(match rand.next() % 4 {
+      0 => Movement::Up,
+      1 => Movement::Down,
+      2 => Movement::Left,
+      3 => Movement::Right,
+      _ => panic!("Impossible"),
+    }),
   }
 }
 
@@ -103,6 +110,7 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
     &self,
     collision_layers: &CollisionLayersInfo,
     bindings: &PropertyBindings,
+    rand: &mut rand::State,
     stage: &mut Stage,
   ) -> bool {
     let mut something_changed = false;
@@ -139,7 +147,7 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
             match rhs_entity {
               RHSEntity::Object(ref object) => {
                 if object.qualifier != Qualifier::No {
-                  let movement = match qualifier_to_movement(object.qualifier) {
+                  let movement = match qualifier_to_movement(rand, object.qualifier) {
                     // if passthrough, just keep whatever is here already, or
                     // stationary
                     None => *old_cell
@@ -158,7 +166,7 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
               } => {
                 if qualifier != &Qualifier::No {
                   let object = bindings[binder].clone();
-                  let movement = match qualifier_to_movement(*qualifier) {
+                  let movement = match qualifier_to_movement(rand, *qualifier) {
                     None => *old_cell.get(&object).unwrap_or(&Movement::Stationary),
                     Some(movement) => movement,
                   };
@@ -266,6 +274,7 @@ enum RuleBodyMatch {
 fn apply_rule_body<'a>(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
+  rand: &mut rand::State,
   stage: &mut Stage,
   axis: grid::SliceAxis,
   reversed: bool,
@@ -377,7 +386,7 @@ fn apply_rule_body<'a>(
           something_changed =
             candidate
               .matched_cells
-              .apply(collision_layers, &overall_bindings, stage)
+              .apply(collision_layers, &overall_bindings, rand, stage)
               || something_changed;
         }
         // if something _did_ change, we're done
@@ -482,6 +491,7 @@ macro_rules! apply_rule_changed {
 fn apply_rule(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
+  rand: &mut rand::State,
   stage: &mut Stage,
   sounds: &mut HashSet<SoundFx>,
   rule: &Rule,
@@ -496,6 +506,7 @@ fn apply_rule(
   let matched = apply_rule_body(
     properties,
     collision_layers,
+    rand,
     stage,
     axis,
     reversed,
@@ -581,6 +592,7 @@ fn apply_rule(
 fn apply_rule_group(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
+  rand: &mut rand::State,
   stage: &mut Stage,
   sounds: &mut HashSet<SoundFx>,
   rule_group: &RuleGroup,
@@ -597,6 +609,7 @@ fn apply_rule_group(
       let changed = apply_rule_changed!(apply_rule(
         properties,
         collision_layers,
+        rand,
         stage,
         sounds,
         rule
@@ -616,6 +629,7 @@ fn apply_rule_group(
 fn apply_rule_groups(
   properties: &HashMap<PropertyName, HashSet<ObjectName>>,
   collision_layers: &CollisionLayersInfo,
+  rand: &mut rand::State,
   stage: &mut Stage,
   sounds: &mut HashSet<SoundFx>,
   rule_groups: &[RuleGroup],
@@ -625,6 +639,7 @@ fn apply_rule_groups(
     let changed = apply_rule_changed!(apply_rule_group(
       properties,
       collision_layers,
+      rand,
       stage,
       sounds,
       rule_group
@@ -841,7 +856,12 @@ impl<'a> CollisionLayersInfo<'a> {
 }
 
 /// returns whether the winning conditions were satisfied
-pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) -> Advance {
+pub fn advance(
+  game: &Game,
+  rand: &mut rand::State,
+  old_stage: &Stage,
+  mb_movement: Option<Movement>,
+) -> Advance {
   // build a map from each object to a collision layer id
   let collision_layers_info = CollisionLayersInfo {
     layers: &game.collision_layers,
@@ -884,6 +904,7 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
   something_changed = match apply_rule_groups(
     &game.properties,
     &collision_layers_info,
+    rand,
     &mut stage,
     &mut sounds,
     &game.rules,
@@ -902,6 +923,7 @@ pub fn advance(game: &Game, old_stage: &Stage, mb_movement: Option<Movement>) ->
   something_changed = match apply_rule_groups(
     &game.properties,
     &collision_layers_info,
+    rand,
     &mut stage,
     &mut sounds,
     &game.late_rules,
