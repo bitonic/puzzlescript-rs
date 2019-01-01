@@ -565,6 +565,12 @@ fn apply_rule(
           RuleCommand::Again => {
             panic!("TODO again");
           }
+          RuleCommand::CheckPoint => {
+            panic!("TODO checkpoint");
+          }
+          RuleCommand::Win => {
+            panic!("TODO win");
+          }
         }
       }
 
@@ -901,10 +907,12 @@ pub fn advance(
   match mb_movement {
     None => (),
     Some(movement) => {
-      for cell in stage.iter_mut() {
-        for player in game.players.iter() {
-          if cell.contains_key(player) {
-            cell[player] = movement;
+      if !(movement == Movement::Action && game.prelude.noaction) {
+        for cell in stage.iter_mut() {
+          for player in game.players.iter() {
+            if cell.contains_key(player) {
+              cell[player] = movement;
+            }
           }
         }
       }

@@ -312,25 +312,8 @@ impl ParseState {
   /// like `discard_line`, but returns the _trimmed_, _comment free_ line
   /// instead of discarding it.
   fn consume_line(&mut self, original_src: bool) -> Result<String, ErrorMsg> {
-    let start_cursor = self.cursor;
+    let str_with_comments = self.consume_line_no_discard_comments(original_src)?;
 
-    while !self.peek_char('\n') && !self.at_eof() {
-      self.cursor += 1;
-    }
-
-    let str_with_comments = if original_src {
-      self.original_src[start_cursor..self.cursor]
-        .iter()
-        .collect::<String>()
-        .trim()
-        .to_string()
-    } else {
-      self.chars[start_cursor..self.cursor]
-        .iter()
-        .collect::<String>()
-        .trim()
-        .to_string()
-    };
     let mut str = "".to_string();
 
     // remove comments
@@ -357,6 +340,29 @@ impl ParseState {
 
     // trim again after removing comments
     Ok(str.trim().to_string())
+  }
+
+  /// like `consume_line`, but does not discard comments.
+  fn consume_line_no_discard_comments(&mut self, original_src: bool) -> Result<String, ErrorMsg> {
+    let start_cursor = self.cursor;
+
+    while !self.peek_char('\n') && !self.at_eof() {
+      self.cursor += 1;
+    }
+
+    Ok(if original_src {
+      self.original_src[start_cursor..self.cursor]
+        .iter()
+        .collect::<String>()
+        .trim()
+        .to_string()
+    } else {
+      self.chars[start_cursor..self.cursor]
+        .iter()
+        .collect::<String>()
+        .trim()
+        .to_string()
+    })
   }
 
   fn consume_numeric_line(&mut self) -> Result<f64, ErrorMsg> {
@@ -391,13 +397,49 @@ impl ParseState {
     } else if self.lex_token("run_rules_on_level_start")? {
       self.ast.prelude.run_rules_on_level_start = true;
     } else if self.lex_token("again_interval")? {
-      self.ast.prelude.again_interval = Some(self.consume_numeric_line()?);
+      self.ast.prelude.again_interval = self.consume_numeric_line()? * 1000.0;
     } else if self.lex_token("norepeat_action")? {
       self.ast.prelude.norepeat_action = true;
     } else if self.lex_token("debug")? {
       self.ast.prelude.debug = true;
     } else if self.lex_token("verbose_logging")? {
       self.ast.prelude.verbose_logging = true;
+    } else if self.lex_token("zoomscreen")? {
+      let width_str: String = assert_found(
+        "zoomscreen height",
+        self.lex_satisfy(&|ch| ch.is_digit(10))?,
+      )?
+      .into_iter()
+      .collect();
+      self.lex_token("x")?;
+      let height_str: String =
+        assert_found("zoomscreen width", self.lex_satisfy(&|ch| ch.is_digit(10))?)?
+          .into_iter()
+          .collect();
+      self.ast.prelude.screen_mode =
+        ScreenMode::ZoomScreen(width_str.parse().unwrap(), height_str.parse().unwrap());
+    } else if self.lex_token("flickscreen")? {
+      let width_str: String = assert_found(
+        "flickscreen height",
+        self.lex_satisfy(&|ch| ch.is_digit(10))?,
+      )?
+      .into_iter()
+      .collect();
+      self.lex_token("x")?;
+      let height_str: String = assert_found(
+        "flickscreen width",
+        self.lex_satisfy(&|ch| ch.is_digit(10))?,
+      )?
+      .into_iter()
+      .collect();
+      self.ast.prelude.screen_mode =
+        ScreenMode::FlickScreen(width_str.parse().unwrap(), height_str.parse().unwrap());
+    } else if self.lex_token("noaction")? {
+      self.ast.prelude.noaction = true;
+    } else if self.lex_token("youtube")? {
+      self.ast.prelude.youtube = Some(self.consume_line(true)?);
+    } else if self.lex_token("realtime_interval")? {
+      self.ast.prelude.realtime_interval = Some(self.consume_numeric_line()? * 1000.0);
     } else {
       Err("Invalid prelude line")?;
     }
@@ -789,6 +831,10 @@ impl ParseState {
       Some(EntityQualifier::Parallel)
     } else if lex_qualifier("orthogonal")? {
       Some(EntityQualifier::Orthogonal)
+    } else if lex_qualifier("vertical")? {
+      Some(EntityQualifier::Vertical)
+    } else if lex_qualifier("horizontal")? {
+      Some(EntityQualifier::Horizontal)
     } else {
       None
     })
@@ -921,6 +967,10 @@ impl ParseState {
       Some(RuleCommand::Restart)
     } else if self.lex_token("again")? {
       Some(RuleCommand::Again)
+    } else if self.lex_token("checkpoint")? {
+      Some(RuleCommand::CheckPoint)
+    } else if self.lex_token("win")? {
+      Some(RuleCommand::Win)
     } else {
       None
     })
@@ -935,17 +985,16 @@ impl ParseState {
     let mut grouped = false;
     if self.lex_token("+")? {
       grouped = true;
-    } else {
-      // TODO this allows you to specify late / random multiple times, we should
-      // probably make it stricter to only allow one declaration each.
-      'running: loop {
-        if self.lex_token("late")? {
-          late = true;
-        } else if self.lex_token("random")? {
-          random = true;
-        } else {
-          break 'running;
-        }
+    }
+    // TODO this allows you to specify late / random multiple times, we should
+    // probably make it stricter to only allow one declaration each.
+    'running: loop {
+      if self.lex_token("late")? {
+        late = true;
+      } else if self.lex_token("random")? {
+        random = true;
+      } else {
+        break 'running;
       }
     }
 
@@ -1100,7 +1149,7 @@ impl ParseState {
 
   fn levels_block(&mut self) -> Result<(), ErrorMsg> {
     if self.lex_token("message")? {
-      let msg = self.consume_line(true)?;
+      let msg = self.consume_line_no_discard_comments(true)?;
       self.ast.levels.push(Level::Message(Rc::from(msg)));
       Ok(())
     } else {
