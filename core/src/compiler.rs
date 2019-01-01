@@ -346,6 +346,8 @@ fn expand_qualifier(
         RuleDirection::Right => vec![Left, Right],
         RuleDirection::Left => vec![Left, Right],
       },
+      ast::EntityQualifier::Vertical => vec![Up, Down],
+      ast::EntityQualifier::Horizontal => vec![Left, Right],
     },
   }
 }
@@ -396,6 +398,8 @@ fn resolve_qualifier(
       ast::EntityQualifier::Random => None,
       ast::EntityQualifier::Perpendicular => None,
       ast::EntityQualifier::Parallel => None,
+      ast::EntityQualifier::Vertical => None,
+      ast::EntityQualifier::Horizontal => None,
     },
   }
 }
@@ -1321,6 +1325,29 @@ mod tests {
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
+
+  #[test]
+  fn third_party_your_pulleying_my_leg() {
+    let file = include_str!("../puzzlescripts/third_party/youre_pulleying_my_leg.pzl");
+    let ast = parser::parse(file).unwrap();
+    compile(&ast).unwrap();
+  }
+
+  /* TODO startloop / endloop to make this work...
+  #[test]
+  fn third_party_cyber_lasso() {
+    let file = include_str!("../puzzlescripts/third_party/cyber_lasso.pzl");
+    let ast = parser::parse(file).unwrap();
+    compile(&ast).unwrap();
+  }
+
+  #[test]
+  fn third_party_skipping_stones() {
+    let file = include_str!("../puzzlescripts/third_party/skipping_stones.pzl");
+    let ast = parser::parse(file).unwrap();
+    compile(&ast).unwrap();
+  }
+  */
 
   #[test]
   fn big_cross_product_empty() {

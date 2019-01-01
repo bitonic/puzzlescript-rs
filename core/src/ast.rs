@@ -5,6 +5,13 @@ use std::collections::{HashMap, HashSet};
 use std::hash::Hash;
 use std::rc::Rc;
 
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum ScreenMode {
+  Normal,
+  ZoomScreen(usize, usize),
+  FlickScreen(usize, usize),
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Prelude {
   pub title: Option<String>,
@@ -18,10 +25,16 @@ pub struct Prelude {
   pub color_palette: ColorPalette,
   pub noundo: bool,
   pub run_rules_on_level_start: bool,
-  pub again_interval: Option<f64>,
+  /// in milliseconds
+  pub again_interval: f64,
   pub norepeat_action: bool,
   pub debug: bool,
   pub verbose_logging: bool,
+  pub screen_mode: ScreenMode,
+  pub noaction: bool,
+  pub youtube: Option<String>,
+  /// in milliseconds, if present
+  pub realtime_interval: Option<f64>,
 }
 
 pub type ObjectName = Rc<str>;
@@ -64,6 +77,8 @@ pub enum EntityQualifier {
   Random,
   Perpendicular,
   Parallel,
+  Vertical,
+  Horizontal,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -100,6 +115,8 @@ pub enum RuleCommand {
   Cancel,
   Restart,
   Again,
+  CheckPoint,
+  Win,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
@@ -187,10 +204,14 @@ impl Ast {
         color_palette: ColorPalette::Arne,
         noundo: false,
         run_rules_on_level_start: false,
-        again_interval: None,
+        again_interval: 150.0,
         norepeat_action: false,
         debug: false,
         verbose_logging: false,
+        screen_mode: ScreenMode::Normal,
+        noaction: false,
+        youtube: None,
+        realtime_interval: None,
       },
       entities: Entities {
         objects: HashMap::new(),
