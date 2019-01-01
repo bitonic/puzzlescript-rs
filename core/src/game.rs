@@ -38,7 +38,6 @@ pub enum Qualifier {
   Left,
   Right,
   Action,
-  No,
   RandomDir,
 }
 
@@ -52,7 +51,7 @@ pub struct QualifiedObject {
 pub type PropertyBinder = usize;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum LHSEntity {
+pub enum EntityMatcher {
   /// match a single object.
   Object(QualifiedObject),
   /// match any of these objects
@@ -61,18 +60,22 @@ pub enum LHSEntity {
     qualifier: Qualifier,
     binder: PropertyBinder,
   },
+  /// make sure none of theseare in the cell
+  No(HashSet<ObjectName>),
 }
+
 #[derive(Debug, PartialEq, Eq, Clone)]
-pub enum RHSEntity {
+pub enum CellModifier {
+  /// insert the given object
   Object(QualifiedObject),
+  /// insert the given property
   Property {
-    /// if 'None', carries the movement of the property on the left
     qualifier: Qualifier,
     binder: PropertyBinder,
     property: PropertyName, // just for debugging / pretty printing
   },
-  /// one of these objects
-  Random(HashSet<ObjectName>),
+  /// remove all these objects
+  No(HashSet<ObjectName>),
 }
 
 pub type Objects<Object> = Rc<Vec<Object>>;
@@ -80,7 +83,14 @@ pub type Objects<Object> = Rc<Vec<Object>>;
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum CellMatcher<RHS> {
   Ellipsis,
-  Objects(Objects<LHSEntity>, RHS),
+  Objects(Objects<EntityMatcher>, RHS),
+}
+
+#[derive(Debug, PartialEq, Eq, Clone)]
+pub struct RHSCell {
+  /// if present, place one of these objects at random
+  pub random: Option<HashSet<ObjectName>>,
+  pub normal: Objects<CellModifier>,
 }
 
 /// the `|` separated cell matchers, e.g. in `[ A | B | C ]` `A`, `B`, and `C`
@@ -89,7 +99,7 @@ pub type Matcher<RHS> = Vec<CellMatcher<RHS>>;
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum RuleBody {
-  Normal(Vec<Matcher<Objects<RHSEntity>>>),
+  Normal(Vec<Matcher<RHSCell>>),
   NoConsequence(Vec<Matcher<()>>), // just used for sounds and commands
 }
 
@@ -180,7 +190,6 @@ impl Display for Qualifier {
       Qualifier::Left => write!(f, "LEFT"),
       Qualifier::Right => write!(f, "RIGHT"),
       Qualifier::Action => write!(f, "ACTION"),
-      Qualifier::No => write!(f, "NO"),
       Qualifier::RandomDir => write!(f, "RANDOMDIR"),
       Qualifier::Passthrough => write!(f, "PASSTHROUGH"),
     }
@@ -194,29 +203,50 @@ impl Display for QualifiedObject {
   }
 }
 
-impl Display for LHSEntity {
+impl Display for EntityMatcher {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     match self {
-      LHSEntity::Object(object) => object.fmt(f),
-      LHSEntity::Property {
+      EntityMatcher::Object(object) => object.fmt(f),
+      EntityMatcher::Property {
         property,
         qualifier,
         binder,
       } => write!(f, "{} {}<{}>", qualifier, property, binder),
+      EntityMatcher::No(objects) => {
+        let mut first = true;
+        for object in objects {
+          if !first {
+            write!(f, " ")?
+          }
+          first = false;
+          write!(f, "NO {}", object)?;
+        }
+        Ok(())
+      }
     }
   }
 }
 
-impl Display for RHSEntity {
+impl Display for CellModifier {
   fn fmt(&self, f: &mut Formatter) -> fmt::Result {
     match self {
-      RHSEntity::Object(object) => object.fmt(f),
-      RHSEntity::Random(_) => write!(f, "TODO RHS random"),
-      RHSEntity::Property {
+      CellModifier::Object(object) => object.fmt(f),
+      CellModifier::Property {
         qualifier,
         binder,
         property,
       } => write!(f, "{} {}<{}>", qualifier, property, binder),
+      CellModifier::No(objects) => {
+        let mut first = true;
+        for object in objects {
+          if !first {
+            write!(f, " ")?;
+          }
+          first = false;
+          write!(f, "NO {}", object)?;
+        }
+        Ok(())
+      }
     }
   }
 }
@@ -246,16 +276,27 @@ fn display_cell_matcher_lhs<RHS>(
   }
 }
 
-fn display_cell_matcher_rhs<RHS>(
-  f: &mut Formatter,
-  cell_matcher: &CellMatcher<Objects<RHS>>,
-) -> fmt::Result
+impl Display for RHSCell {
+  fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+    match &self.random {
+      None => (),
+      Some(ref objects) => {
+        for object in objects {
+          write!(f, "RANDOM {} ", object)?;
+        }
+      }
+    }
+    display_objects(f, &self.normal)
+  }
+}
+
+fn display_cell_matcher_rhs<RHS>(f: &mut Formatter, cell_matcher: &CellMatcher<RHS>) -> fmt::Result
 where
   RHS: Display,
 {
   match cell_matcher {
     CellMatcher::Ellipsis => write!(f, "..."),
-    CellMatcher::Objects(_, objects) => display_objects(f, objects),
+    CellMatcher::Objects(_, rhs) => rhs.fmt(f),
   }
 }
 

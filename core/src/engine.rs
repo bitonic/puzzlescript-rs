@@ -25,17 +25,22 @@ fn match_qualifier(qualifier: Qualifier, movement: Movement) -> bool {
 fn match_cell(
   properties: &HashMap<PropertyName, HashSet<PropertyName>>,
   cell: &im_hashmap::HashMap<ObjectName, Movement>,
-  matcher: &Objects<LHSEntity>,
+  matcher: &Objects<EntityMatcher>,
 ) -> Option<PropertyBindings> {
   let mut bindings: PropertyBindings = HashMap::new();
 
   'running: for lhs_entity in matcher.iter() {
     match lhs_entity {
-      LHSEntity::Object(object) => match cell.get(&object.object) {
-        None => {
-          if object.qualifier != Qualifier::No {
+      EntityMatcher::No(objects) => {
+        for object in objects {
+          if cell.contains_key(object) {
             return None;
           }
+        }
+      }
+      EntityMatcher::Object(object) => match cell.get(&object.object) {
+        None => {
+          return None;
         }
         Some(movement) => {
           if !match_qualifier(object.qualifier, *movement) {
@@ -43,38 +48,30 @@ fn match_cell(
           }
         }
       },
-      LHSEntity::Property {
+      EntityMatcher::Property {
         property,
         qualifier,
         binder,
       } => {
-        if *qualifier == Qualifier::No {
-          for property_object in properties[property].iter() {
-            if cell.contains_key(property_object) {
-              return None;
-            }
-          }
-        } else {
-          if !properties.contains_key(property) {
-            println!(
-              "Cannot find property {} in properties {:?}!",
-              property,
-              properties.keys()
-            );
-          }
-          for property_object in properties[property].iter() {
-            match cell.get(property_object) {
-              None => (),
-              Some(movement) => {
-                if match_qualifier(*qualifier, *movement) {
-                  bindings.insert(*binder, property_object.clone());
-                  continue 'running; // keep going, we have a match
-                }
+        if !properties.contains_key(property) {
+          println!(
+            "Cannot find property {} in properties {:?}!",
+            property,
+            properties.keys()
+          );
+        }
+        for property_object in properties[property].iter() {
+          match cell.get(property_object) {
+            None => (),
+            Some(movement) => {
+              if match_qualifier(*qualifier, *movement) {
+                bindings.insert(*binder, property_object.clone());
+                continue 'running; // keep going, we have a match
               }
             }
           }
-          return None; // we found nothing
         }
+        return None; // we found nothing
       }
     }
   }
@@ -92,7 +89,6 @@ fn qualifier_to_movement(rand: &mut rand::State, qualifier: Qualifier) -> Option
     Qualifier::Right => Some(Movement::Right),
     Qualifier::Action => Some(Movement::Action),
     Qualifier::Passthrough => None,
-    Qualifier::No => panic!("Got 'No' in qualifier_to_movement"),
     Qualifier::RandomDir => Some(match rand.next() % 4 {
       0 => Movement::Up,
       1 => Movement::Down,
@@ -111,7 +107,7 @@ struct MatchedCells<'a, RHS> {
   matches: Vec<usize>,
 }
 
-impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
+impl<'a> MatchedCells<'a, RHSCell> {
   /// returns if anything changed
   pub fn apply(
     &self,
@@ -129,67 +125,65 @@ impl<'a> MatchedCells<'a, Objects<RHSEntity>> {
     for matcher in self.cell_matchers {
       match matcher {
         CellMatcher::Ellipsis => (),
-        CellMatcher::Objects(ref lhs_entities, ref rhs_entities) => {
+        CellMatcher::Objects(ref lhs_entities, ref rhs_cell) => {
           let cell_ix = *matches_iter.next().unwrap();
           let old_cell = cells[cell_ix].clone();
           // first remove all the matched LHS entities -- the ones that survive
           // will be added back by the RHS
           for lhs_entity in lhs_entities.iter() {
             match lhs_entity {
-              LHSEntity::Object(ref object) => {
-                if object.qualifier != Qualifier::No {
-                  cells[cell_ix].remove(&object.object);
-                }
+              EntityMatcher::No(_) => (),
+              EntityMatcher::Object(ref object) => {
+                cells[cell_ix].remove(&object.object);
               }
-              LHSEntity::Property {
-                binder, qualifier, ..
-              } => {
-                if qualifier != &Qualifier::No {
-                  cells[cell_ix].remove(&bindings[binder]);
-                }
+              EntityMatcher::Property { binder, .. } => {
+                cells[cell_ix].remove(&bindings[binder]);
               }
             }
           }
-          for rhs_entity in rhs_entities.iter() {
+          // then add the random entities, if any
+          match &rhs_cell.random {
+            None => (),
+            Some(ref random_objects) => {
+              let ix = rand.next() % random_objects.len() as u32;
+              let object = random_objects.iter().nth(ix as usize).unwrap().clone();
+              cells[cell_ix].insert(object, Movement::Stationary);
+            }
+          }
+          for rhs_entity in rhs_cell.normal.iter() {
+            // then process the modifiers
             match rhs_entity {
-              RHSEntity::Object(ref object) => {
-                if object.qualifier != Qualifier::No {
-                  let movement = match qualifier_to_movement(rand, object.qualifier) {
-                    // if passthrough, just keep whatever is here already, or
-                    // stationary
-                    None => *old_cell
-                      .get(&object.object)
-                      .unwrap_or(&Movement::Stationary),
-                    Some(movement) => movement,
-                  };
-                  for other_object in collision_layers.objects_in_same_layer(&object.object) {
-                    cells[cell_ix].remove(other_object);
-                  }
-                  cells[cell_ix].insert(object.object.clone(), movement);
+              CellModifier::No(ref objects) => {
+                for object in objects {
+                  cells[cell_ix].remove(object);
                 }
               }
-              RHSEntity::Property {
+              CellModifier::Object(ref object) => {
+                let movement = match qualifier_to_movement(rand, object.qualifier) {
+                  // if passthrough, just keep whatever is here already, or
+                  // stationary
+                  None => *old_cell
+                    .get(&object.object)
+                    .unwrap_or(&Movement::Stationary),
+                  Some(movement) => movement,
+                };
+                for other_object in collision_layers.objects_in_same_layer(&object.object) {
+                  cells[cell_ix].remove(other_object);
+                }
+                cells[cell_ix].insert(object.object.clone(), movement);
+              }
+              CellModifier::Property {
                 qualifier, binder, ..
               } => {
-                if qualifier != &Qualifier::No {
-                  let object = bindings[binder].clone();
-                  let movement = match qualifier_to_movement(rand, *qualifier) {
-                    None => *old_cell.get(&object).unwrap_or(&Movement::Stationary),
-                    Some(movement) => movement,
-                  };
-                  for other_object in collision_layers.objects_in_same_layer(&object) {
-                    cells[cell_ix].remove(other_object);
-                  }
-                  cells[cell_ix].insert(object, movement);
-                }
-              }
-              RHSEntity::Random(objects) => {
-                let ix = rand.next() % objects.len() as u32;
-                let object = objects.iter().nth(ix as usize).unwrap().clone();
+                let object = bindings[binder].clone();
+                let movement = match qualifier_to_movement(rand, *qualifier) {
+                  None => *old_cell.get(&object).unwrap_or(&Movement::Stationary),
+                  Some(movement) => movement,
+                };
                 for other_object in collision_layers.objects_in_same_layer(&object) {
                   cells[cell_ix].remove(other_object);
                 }
-                cells[cell_ix].insert(object, Movement::Stationary);
+                cells[cell_ix].insert(object, movement);
               }
             }
           }
@@ -274,7 +268,7 @@ struct MatchedCellsCandidate<'a> {
   matched_slice_ix: usize,
   /// we've already checked all the remaining slices
   exhausted: bool,
-  matched_cells: MatchedCells<'a, Objects<RHSEntity>>,
+  matched_cells: MatchedCells<'a, RHSCell>,
   bindings: PropertyBindings,
 }
 
