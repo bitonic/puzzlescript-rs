@@ -1,6 +1,4 @@
 // TODO remove panics, use error instead
-// TODO handle `no` better, it's very different from the other qualifiers and
-// we need to special cases in various places...
 use crate::ast;
 use crate::game::*;
 use crate::grid::*;
@@ -290,116 +288,87 @@ where
   )
 }
 
-fn expand_qualifier(
-  rule_direction: RuleDirection,
-  mb_qualifier: Option<ast::EntityQualifier>,
-) -> Vec<Qualifier> {
-  use self::Qualifier::*;
-
-  match mb_qualifier {
-    None => vec![Passthrough],
-    Some(qualifier) => match qualifier {
-      ast::EntityQualifier::ArrowRight => vec![match rule_direction {
-        RuleDirection::Down => Down,
-        RuleDirection::Right => Right,
-        RuleDirection::Up => Up,
-        RuleDirection::Left => Left,
-      }],
-      ast::EntityQualifier::ArrowLeft => vec![match rule_direction {
-        RuleDirection::Down => Up,
-        RuleDirection::Up => Down,
-        RuleDirection::Right => Left,
-        RuleDirection::Left => Right,
-      }],
-      ast::EntityQualifier::ArrowUp => vec![match rule_direction {
-        RuleDirection::Down => Left,
-        RuleDirection::Up => Right,
-        RuleDirection::Right => Up,
-        RuleDirection::Left => Down,
-      }],
-      ast::EntityQualifier::ArrowDown => vec![match rule_direction {
-        RuleDirection::Down => Right,
-        RuleDirection::Up => Left,
-        RuleDirection::Right => Down,
-        RuleDirection::Left => Up,
-      }],
-      ast::EntityQualifier::Up => vec![Up],
-      ast::EntityQualifier::Down => vec![Down],
-      ast::EntityQualifier::Left => vec![Left],
-      ast::EntityQualifier::Right => vec![Right],
-      ast::EntityQualifier::Moving => vec![Up, Down, Left, Right, Action],
-      ast::EntityQualifier::Orthogonal => vec![Up, Down, Left, Right, Action],
-      ast::EntityQualifier::Stationary => vec![Stationary],
-      ast::EntityQualifier::Action => vec![Action],
-      ast::EntityQualifier::No => vec![No],
-      ast::EntityQualifier::Random => panic!("Got random in LHS"),
-      ast::EntityQualifier::RandomDir => vec![RandomDir],
-      ast::EntityQualifier::Perpendicular => match rule_direction {
-        RuleDirection::Down => vec![Left, Right],
-        RuleDirection::Up => vec![Left, Right],
-        RuleDirection::Right => vec![Up, Down],
-        RuleDirection::Left => vec![Up, Down],
-      },
-      ast::EntityQualifier::Parallel => match rule_direction {
-        RuleDirection::Down => vec![Up, Down],
-        RuleDirection::Up => vec![Up, Down],
-        RuleDirection::Right => vec![Left, Right],
-        RuleDirection::Left => vec![Left, Right],
-      },
-      ast::EntityQualifier::Vertical => vec![Up, Down],
-      ast::EntityQualifier::Horizontal => vec![Left, Right],
-    },
-  }
+#[derive(Debug, PartialEq, Eq, Clone)]
+enum ResolvedQualifier {
+  No,
+  Normal(&'static [Qualifier]),
 }
+
+static MOVING_DIRECTIONS: &'static [Qualifier] = &[
+  Qualifier::Up,
+  Qualifier::Down,
+  Qualifier::Left,
+  Qualifier::Right,
+  Qualifier::Action,
+];
+static ORTHOGONAL_DIRECTIONS: &'static [Qualifier] = &[
+  Qualifier::Up,
+  Qualifier::Down,
+  Qualifier::Left,
+  Qualifier::Right,
+];
+static VERTICAL_DIRECTIONS: &'static [Qualifier] = &[Qualifier::Up, Qualifier::Down];
+static HORIZONTAL_DIRECTIONS: &'static [Qualifier] = &[Qualifier::Left, Qualifier::Right];
 
 fn resolve_qualifier(
   rule_direction: RuleDirection,
   mb_qualifier: Option<ast::EntityQualifier>,
-) -> Option<Qualifier> {
+) -> ResolvedQualifier {
   use self::Qualifier::*;
+  use self::ResolvedQualifier::*;
 
   match mb_qualifier {
-    None => Some(Passthrough),
+    None => Normal(&[Passthrough]),
     Some(qualifier) => match qualifier {
       ast::EntityQualifier::ArrowRight => match rule_direction {
-        RuleDirection::Down => Some(Down),
-        RuleDirection::Up => Some(Up),
-        RuleDirection::Right => Some(Right),
-        RuleDirection::Left => Some(Left),
+        RuleDirection::Down => Normal(&[Down]),
+        RuleDirection::Up => Normal(&[Up]),
+        RuleDirection::Right => Normal(&[Right]),
+        RuleDirection::Left => Normal(&[Left]),
       },
       ast::EntityQualifier::ArrowLeft => match rule_direction {
-        RuleDirection::Down => Some(Up),
-        RuleDirection::Up => Some(Down),
-        RuleDirection::Right => Some(Left),
-        RuleDirection::Left => Some(Right),
+        RuleDirection::Down => Normal(&[Up]),
+        RuleDirection::Up => Normal(&[Down]),
+        RuleDirection::Right => Normal(&[Left]),
+        RuleDirection::Left => Normal(&[Right]),
       },
       ast::EntityQualifier::ArrowUp => match rule_direction {
-        RuleDirection::Down => Some(Right),
-        RuleDirection::Up => Some(Left),
-        RuleDirection::Right => Some(Up),
-        RuleDirection::Left => Some(Down),
+        RuleDirection::Down => Normal(&[Right]),
+        RuleDirection::Up => Normal(&[Left]),
+        RuleDirection::Right => Normal(&[Up]),
+        RuleDirection::Left => Normal(&[Down]),
       },
       ast::EntityQualifier::ArrowDown => match rule_direction {
-        RuleDirection::Down => Some(Left),
-        RuleDirection::Up => Some(Right),
-        RuleDirection::Right => Some(Down),
-        RuleDirection::Left => Some(Up),
+        RuleDirection::Down => Normal(&[Left]),
+        RuleDirection::Up => Normal(&[Right]),
+        RuleDirection::Right => Normal(&[Down]),
+        RuleDirection::Left => Normal(&[Up]),
       },
-      ast::EntityQualifier::Up => Some(Up),
-      ast::EntityQualifier::Down => Some(Down),
-      ast::EntityQualifier::Left => Some(Left),
-      ast::EntityQualifier::Right => Some(Right),
-      ast::EntityQualifier::Moving => None,
-      ast::EntityQualifier::Orthogonal => None,
-      ast::EntityQualifier::Stationary => Some(Stationary),
-      ast::EntityQualifier::Action => Some(Action),
-      ast::EntityQualifier::No => Some(No),
-      ast::EntityQualifier::RandomDir => Some(RandomDir),
-      ast::EntityQualifier::Random => None,
-      ast::EntityQualifier::Perpendicular => None,
-      ast::EntityQualifier::Parallel => None,
-      ast::EntityQualifier::Vertical => None,
-      ast::EntityQualifier::Horizontal => None,
+      ast::EntityQualifier::Up => Normal(&[Up]),
+      ast::EntityQualifier::Down => Normal(&[Down]),
+      ast::EntityQualifier::Left => Normal(&[Left]),
+      ast::EntityQualifier::Right => Normal(&[Right]),
+      ast::EntityQualifier::Moving => Normal(MOVING_DIRECTIONS),
+      ast::EntityQualifier::Orthogonal => Normal(ORTHOGONAL_DIRECTIONS),
+      ast::EntityQualifier::Stationary => Normal(&[Stationary]),
+      ast::EntityQualifier::Action => Normal(&[Action]),
+      ast::EntityQualifier::No => No,
+      ast::EntityQualifier::Random => panic!("Got random in LHS"),
+      ast::EntityQualifier::RandomDir => Normal(&[RandomDir]),
+      ast::EntityQualifier::Perpendicular => match rule_direction {
+        RuleDirection::Down => Normal(HORIZONTAL_DIRECTIONS),
+        RuleDirection::Up => Normal(HORIZONTAL_DIRECTIONS),
+        RuleDirection::Right => Normal(VERTICAL_DIRECTIONS),
+        RuleDirection::Left => Normal(VERTICAL_DIRECTIONS),
+      },
+      ast::EntityQualifier::Parallel => match rule_direction {
+        RuleDirection::Down => Normal(VERTICAL_DIRECTIONS),
+        RuleDirection::Up => Normal(VERTICAL_DIRECTIONS),
+        RuleDirection::Right => Normal(HORIZONTAL_DIRECTIONS),
+        RuleDirection::Left => Normal(HORIZONTAL_DIRECTIONS),
+      },
+      ast::EntityQualifier::Vertical => Normal(VERTICAL_DIRECTIONS),
+      ast::EntityQualifier::Horizontal => Normal(HORIZONTAL_DIRECTIONS),
     },
   }
 }
@@ -559,7 +528,7 @@ impl<'a> CompileState<'a> {
     property_counter: &mut usize,
     rule_direction: RuleDirection,
     match_entity: &ast::MatchEntity,
-  ) -> Vec<(LHSInfo, Objects<LHSEntity>)> {
+  ) -> Vec<(LHSInfo, Objects<EntityMatcher>)> {
     let with_qualifier = |lhs_info: &mut LHSInfo,
                           mb_qualifier: Option<ast::EntityQualifier>,
                           entity_info: &Rc<LHSEntityInfo>| {
@@ -568,68 +537,82 @@ impl<'a> CompileState<'a> {
       });
     };
     match &self.legend[&match_entity.entity] {
-      LegendBody::Aggregate(objects) => expand_qualifier(rule_direction, match_entity.qualifier)
-        .into_iter()
-        .map(|qualifier| {
-          let match_objects: Objects<QualifiedObject> = Rc::new(
-            objects
-              .iter()
-              .map(|object| QualifiedObject {
-                qualifier,
-                object: object.clone(),
-              })
-              .collect(),
-          );
-          let entity_info = Rc::new(LHSEntityInfo::Aggregate {
-            original_qualifier: match_entity.qualifier,
-            derived_matchers: match_objects.clone(),
-          });
-          let mut lhs_info = LHSInfo::new();
-          // if the qualifier is No, we do not "remember it", since the match
-          // is negative
-          if match_entity.qualifier != Some(ast::EntityQualifier::No) {
-            with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
-            lhs_info.insert_entity(&match_entity.entity, &entity_info);
+      LegendBody::Aggregate(objects) => {
+        match resolve_qualifier(rule_direction, match_entity.qualifier) {
+          ResolvedQualifier::No => {
+            if objects.len() == 1 {
+              vec![(
+                LHSInfo::new(),
+                Rc::new(vec![EntityMatcher::No(objects.clone())]),
+              )]
+            } else {
+              panic!("Cannot use 'no' on aggregate {}", match_entity.entity)
+            }
           }
-          (
-            lhs_info,
-            Rc::new(
-              match_objects
-                .iter()
-                .cloned()
-                .map(LHSEntity::Object)
-                .collect(),
-            ),
-          )
-        })
-        .collect(),
-      LegendBody::Property(_) => {
-        let mut result = Vec::new();
-        for qualifier in expand_qualifier(rule_direction, match_entity.qualifier) {
-          let mut lhs_info = LHSInfo::new();
-          let binder = *property_counter;
-          *property_counter += 1;
-          let entity_info = Rc::new(LHSEntityInfo::Property {
-            original_qualifier: match_entity.qualifier,
-            derived_qualifier: qualifier,
-            binder,
-          });
-          // if the qualifier is No, we do not "remember it", since the match
-          // is negative
-          if match_entity.qualifier != Some(ast::EntityQualifier::No) {
-            lhs_info.insert_entity(&match_entity.entity, &entity_info);
-            with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
-          }
-          result.push((
-            lhs_info,
-            Rc::new(vec![LHSEntity::Property {
-              qualifier,
-              binder,
-              property: match_entity.entity.clone(),
-            }]),
-          ));
+          ResolvedQualifier::Normal(qualifiers) => qualifiers
+            .iter()
+            .map(|qualifier| {
+              let match_objects: Objects<QualifiedObject> = Rc::new(
+                objects
+                  .iter()
+                  .map(|object| QualifiedObject {
+                    qualifier: *qualifier,
+                    object: object.clone(),
+                  })
+                  .collect(),
+              );
+              let entity_info = Rc::new(LHSEntityInfo::Aggregate {
+                original_qualifier: match_entity.qualifier,
+                derived_matchers: match_objects.clone(),
+              });
+              let mut lhs_info = LHSInfo::new();
+              with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
+              lhs_info.insert_entity(&match_entity.entity, &entity_info);
+              (
+                lhs_info,
+                Rc::new(
+                  match_objects
+                    .iter()
+                    .cloned()
+                    .map(EntityMatcher::Object)
+                    .collect(),
+                ),
+              )
+            })
+            .collect(),
         }
-        result
+      }
+      LegendBody::Property(property_objects) => {
+        match resolve_qualifier(rule_direction, match_entity.qualifier) {
+          ResolvedQualifier::No => vec![(
+            LHSInfo::new(),
+            Rc::new(vec![EntityMatcher::No(property_objects.clone())]),
+          )],
+          ResolvedQualifier::Normal(qualifiers) => {
+            let mut result = Vec::new();
+            for qualifier in qualifiers {
+              let mut lhs_info = LHSInfo::new();
+              let binder = *property_counter;
+              *property_counter += 1;
+              let entity_info = Rc::new(LHSEntityInfo::Property {
+                original_qualifier: match_entity.qualifier,
+                derived_qualifier: *qualifier,
+                binder,
+              });
+              lhs_info.insert_entity(&match_entity.entity, &entity_info);
+              with_qualifier(&mut lhs_info, match_entity.qualifier, &entity_info);
+              result.push((
+                lhs_info,
+                Rc::new(vec![EntityMatcher::Property {
+                  qualifier: *qualifier,
+                  binder,
+                  property: match_entity.entity.clone(),
+                }]),
+              ));
+            }
+            result
+          }
+        }
       }
     }
   }
@@ -639,7 +622,7 @@ impl<'a> CompileState<'a> {
     property_counter: &mut usize,
     rule_direction: RuleDirection,
     match_entities: &[ast::MatchEntity],
-  ) -> Vec<(LHSInfo, Vec<LHSEntity>)> {
+  ) -> Vec<(LHSInfo, Vec<EntityMatcher>)> {
     big_cross_product_op(
       (LHSInfo::new(), Vec::new()),
       |(lhs_info, match_objects), (new_lhs_info, new_match_objects)| {
@@ -685,278 +668,338 @@ impl<'a> CompileState<'a> {
     )
   }
 
+  fn process_rhs_aggregate(
+    &self,
+    rule_direction: RuleDirection,
+    overall_lhs_info: &LHSInfo,
+    cell_lhs_info: &LHSInfo,
+    match_entity: &ast::MatchEntity,
+    modifiers_0: &mut Vec<CellModifier>,
+    objects: &HashSet<ObjectName>,
+  ) {
+    match resolve_qualifier(rule_direction, match_entity.qualifier) {
+      ResolvedQualifier::No => {
+        if objects.len() == 1 {
+          modifiers_0.push(CellModifier::No(objects.clone()));
+        } else {
+          panic!("Cannot use 'no' with aggregate {}", match_entity.entity);
+        }
+      }
+      // first see if we can resolve the qualifier immediately,
+      // in which case just use it for all the objects -- with one
+      // caveat: passthroughs stay passthroughs only if we do not
+      // have the same object on the LHS, or if the object on the LHS
+      // is a passthrough too. otherwise they are stationary.
+      //
+      // the reasoning is that in a rule like
+      //
+      // ```text
+      // [ > A ] -> [ A ]
+      // ```
+      //
+      // we want the A on the right to change to stationary, not to
+      // carry over the `>`.
+      ResolvedQualifier::Normal(qualifiers) if qualifiers.len() == 1 => {
+        let qualifier = qualifiers[0];
+        let actual_qualifier = if qualifier != Qualifier::Passthrough {
+          qualifier
+        } else {
+          match cell_lhs_info.get_entity(&match_entity.entity) {
+            Ambiguous => Qualifier::Passthrough,
+            Unique(lhs_info) => match &*lhs_info {
+              LHSEntityInfo::Property { .. } => panic!("Got property LHS info from aggregate"),
+              LHSEntityInfo::Aggregate {
+                original_qualifier, ..
+              } => match original_qualifier {
+                None => Qualifier::Passthrough,
+                Some(_) => Qualifier::Stationary,
+              },
+            },
+          }
+        };
+        for object in objects {
+          modifiers_0.push(CellModifier::Object(QualifiedObject {
+            object: object.clone(),
+            qualifier: actual_qualifier,
+          }));
+        }
+      }
+      // otherwise, if the qualifier is ambiguous, we need to find it
+      // on the LHS somewhere
+      ResolvedQualifier::Normal(_) => {
+        let with_lhs_info =
+          |modifiers: &mut Vec<CellModifier>, lhs_info: &LHSEntityInfo| match lhs_info {
+            LHSEntityInfo::Property { .. } => panic!("Got property LHS info from aggregate"),
+            LHSEntityInfo::Aggregate {
+              original_qualifier,
+              derived_matchers,
+            } => {
+              if original_qualifier == &match_entity.qualifier {
+                for match_object in derived_matchers.iter() {
+                  modifiers.push(CellModifier::Object(QualifiedObject {
+                    object: match_object.object.clone(),
+                    qualifier: match_object.qualifier,
+                  }));
+                }
+                true
+              } else {
+                false
+              }
+            }
+          };
+        let mb_from_cell = |modifiers: &mut Vec<CellModifier>| match cell_lhs_info
+          .get_entity(&match_entity.entity)
+        {
+          Unique(lhs_info) => with_lhs_info(modifiers, &lhs_info),
+          Ambiguous => false,
+        };
+        let mb_from_overall = |modifiers: &mut Vec<CellModifier>| match overall_lhs_info
+          .get_entity(&match_entity.entity)
+        {
+          Unique(lhs_info) => with_lhs_info(modifiers, &lhs_info),
+          Ambiguous => false,
+        };
+        let mb_from_qualifier = |modifiers: &mut Vec<CellModifier>| match overall_lhs_info
+          .get_qualifier(match_entity.qualifier.unwrap())
+        {
+          Unique(qualifier_info) => {
+            match *qualifier_info.entity_info {
+              LHSEntityInfo::Property {
+                ref derived_qualifier,
+                ..
+              } => {
+                for object in objects {
+                  modifiers.push(CellModifier::Object(QualifiedObject {
+                    object: object.clone(),
+                    qualifier: *derived_qualifier,
+                  }));
+                }
+                true
+              }
+              LHSEntityInfo::Aggregate {
+                ref derived_matchers,
+                ..
+              } =>
+              // if there is only one object on the left, then just assign its qualifier
+              // to every object on the right
+              {
+                if derived_matchers.len() == 1 {
+                  let qualifier = derived_matchers[0].qualifier;
+                  for object in objects {
+                    modifiers.push(CellModifier::Object(QualifiedObject {
+                      object: object.clone(),
+                      qualifier,
+                    }));
+                  }
+                  true
+                } else {
+                  // otherwise, pair things on the right with things on the left.
+                  let mut objects_map: HashMap<&ObjectName, &QualifiedObject> = HashMap::new();
+                  for matcher in derived_matchers.iter() {
+                    objects_map.insert(&matcher.object, matcher);
+                  }
+                  let mut matchers = Vec::new();
+                  for object in objects {
+                    match objects_map.get(object) {
+                      None => return false,
+                      Some(match_object) => matchers.push(CellModifier::Object(QualifiedObject {
+                        object: match_object.object.clone(),
+                        qualifier: match_object.qualifier,
+                      })),
+                    }
+                  }
+                  modifiers.append(&mut matchers);
+                  true
+                }
+              }
+            }
+          }
+          Ambiguous => false,
+        };
+        if !mb_from_cell(modifiers_0)
+          && !mb_from_overall(modifiers_0)
+          && !mb_from_qualifier(modifiers_0)
+        {
+          panic!(
+            "Could not disambiguate {:?} for entity {:?} on RHS {:?}",
+            match_entity.qualifier, match_entity.entity, overall_lhs_info
+          )
+        }
+      }
+    }
+  }
+
+  fn process_rhs_property(
+    &self,
+    rule_direction: RuleDirection,
+    overall_lhs_info: &LHSInfo,
+    cell_lhs_info: &LHSInfo,
+    match_entity: &ast::MatchEntity,
+    modifiers_0: &mut Vec<CellModifier>,
+    property_objects: &HashSet<ObjectName>,
+  ) {
+    // if the qualifier is no, we bail out immediately
+    match resolve_qualifier(rule_direction, match_entity.qualifier) {
+      ResolvedQualifier::No => modifiers_0.push(CellModifier::No(property_objects.clone())),
+      ResolvedQualifier::Normal(qualifiers) => {
+        // otherwise, we need to find out which property on the
+        // LHS this property refers to.
+        //
+        // First define a utility to finish up once we have found
+        // something on the LHS:
+        let with_lhs_info =
+          |modifiers: &mut Vec<CellModifier>, same_cell: bool, lhs_info: &LHSEntityInfo| {
+            match lhs_info {
+              LHSEntityInfo::Aggregate { .. } => panic!("Got LHS aggregate for property"),
+              LHSEntityInfo::Property {
+                original_qualifier,
+                derived_qualifier,
+                binder,
+              } => {
+                let mut with_qualifier = |qualifier| {
+                  modifiers.push(CellModifier::Property {
+                    qualifier,
+                    binder: *binder,
+                    property: match_entity.entity.clone(),
+                  });
+                };
+                let give_up = || {
+                  panic!(
+                    "Could not resolve ambiguous qualifier {:?} for entity {:?}",
+                    match_entity.qualifier, match_entity.entity
+                  )
+                };
+                if qualifiers.len() == 1 {
+                  // if we can resolve a qualifier immediately, use that one -- but
+                  // as explained above, treat passthrough specially
+                  let qualifier = qualifiers[0];
+                  with_qualifier(
+                    if same_cell
+                      && qualifier == Qualifier::Passthrough
+                      && *derived_qualifier != Qualifier::Passthrough
+                    {
+                      Qualifier::Stationary
+                    } else {
+                      qualifier
+                    },
+                  )
+                } else {
+                  // otherwise, first try use the one from the LHSInfo
+                  if original_qualifier == &match_entity.qualifier {
+                    with_qualifier(*derived_qualifier)
+                  } else {
+                    // if that fails too, try to get it from the qualifier map
+                    match overall_lhs_info.get_qualifier(match_entity.qualifier.unwrap()) {
+                      Unique(qualifier_info) => {
+                        match *qualifier_info.entity_info {
+                          // if the qualifier is attached to a property, just use it
+                          LHSEntityInfo::Property {
+                            ref derived_qualifier,
+                            ..
+                          } => with_qualifier(*derived_qualifier),
+                          LHSEntityInfo::Aggregate {
+                            ref derived_matchers,
+                            ..
+                          } =>
+                          // if it's attached to an aggregate, only accept if it's just one object
+                          {
+                            if derived_matchers.len() == 1 {
+                              with_qualifier(derived_matchers[0].qualifier)
+                            } else {
+                              give_up()
+                            }
+                          }
+                        }
+                      }
+                      Ambiguous => give_up(),
+                    }
+                  }
+                }
+              }
+            }
+          };
+        // Then, first check if we have a matching property in the same cell:
+        match cell_lhs_info.get_entity(&match_entity.entity) {
+          Unique(lhs_info) => with_lhs_info(modifiers_0, true, &lhs_info),
+          Ambiguous => {
+            // Failing that, see if we have it anywhere else in the rule:
+            match overall_lhs_info.get_entity(&match_entity.entity) {
+              Unique(lhs_info) => with_lhs_info(modifiers_0, false, &lhs_info),
+              // otherwise we're done
+              Ambiguous => panic!(
+                "Could not find property matching {:?} anywhere on the LHS (cell or overall)",
+                match_entity.entity
+              ),
+            }
+          }
+        }
+      }
+    }
+  }
+
   fn process_rhs_entities(
     &self,
     rule_direction: RuleDirection,
     overall_lhs_info: &LHSInfo,
     cell_lhs_info: &LHSInfo,
     entities: &[ast::MatchEntity],
-  ) -> Objects<RHSEntity> {
-    Rc::new(
-      entities
-        .iter()
-        .flat_map(|match_entity| {
-          if match_entity.qualifier == Some(ast::EntityQualifier::Random) {
-            vec![match &self.legend[&match_entity.entity] {
-              LegendBody::Aggregate(objects) if objects.len() == 1 => {
-                RHSEntity::Random(objects.clone())
-              }
-              LegendBody::Aggregate(_) => {
-                panic!("TODO random compound aggregate {:?}", match_entity.entity)
-              }
-              LegendBody::Property(objects) => {
-                RHSEntity::Random(objects.clone())
-              }
-            }]
-          } else {
-            // when dealing with an aggregate...
-            match &self.legend[&match_entity.entity] {
-              LegendBody::Aggregate(objects) => {
-                // first see if we can resolve the qualifier immediately
-                match resolve_qualifier(rule_direction, match_entity.qualifier) {
-                  // in which case just use it for all the objects -- with one
-                  // caveat: passthroughs stay passthroughs only if we do not
-                  // have the same object on the LHS, or if the object on the LHS
-                  // is a passthrough too. otherwise they are stationary.
-                  //
-                  // the reasoning is that in a rule like
-                  //
-                  // ```text
-                  // [ > A ] -> [ A ]
-                  // ```
-                  //
-                  // we want the A on the right to change to stationary, not to
-                  // carry over the `>`.
-                  Some(qualifier) => {
-                    let actual_qualifier = if qualifier != Qualifier::Passthrough {
-                      qualifier
-                    } else {
-                      match cell_lhs_info.get_entity(&match_entity.entity) {
-                        Ambiguous => Qualifier::Passthrough,
-                        Unique(lhs_info) => match &*lhs_info {
-                          LHSEntityInfo::Property{..} => panic!("Got property LHS info from aggregate"),
-                          LHSEntityInfo::Aggregate{original_qualifier, ..} => match original_qualifier {
-                            None => Qualifier::Passthrough,
-                            Some(_) => Qualifier::Stationary,
-                          }
-                        }
-                      }
-                    };
-                    objects
-                      .iter()
-                      .map(|object| {
-                        RHSEntity::Object(QualifiedObject {
-                          object: object.clone(),
-                          qualifier: actual_qualifier,
-                        })
-                      })
-                      .collect()
-                  },
-                  // otherwise, if the qualifier is ambiguous, we need to find it
-                  // on the LHS somewhere
-                  None => {
-                    let with_lhs_info = |lhs_info: &LHSEntityInfo| match lhs_info {
-                      LHSEntityInfo::Property { .. } => {
-                        panic!("Got property LHS info from aggregate")
-                      }
-                      LHSEntityInfo::Aggregate {
-                        original_qualifier,
-                        derived_matchers,
-                      } => {
-                        if original_qualifier == &match_entity.qualifier {
-                          Some(
-                            derived_matchers
-                              .iter()
-                              .map(|match_object| {
-                                RHSEntity::Object(QualifiedObject {
-                                  object: match_object.object.clone(),
-                                  qualifier: match_object.qualifier,
-                                })
-                              })
-                              .collect(),
-                          )
-                        } else {
-                          None
-                        }
-                      }
-                    };
-                    let mb_from_cell = match cell_lhs_info.get_entity(&match_entity.entity) {
-                      Unique(lhs_info) => with_lhs_info(&lhs_info),
-                      Ambiguous => None,
-                    };
-                    let mb_from_overall = || match overall_lhs_info.get_entity(&match_entity.entity)
-                    {
-                      Unique(lhs_info) => with_lhs_info(&lhs_info),
-                      Ambiguous => None,
-                    };
-                    let mb_from_qualifier =
-                      || match overall_lhs_info.get_qualifier(match_entity.qualifier.unwrap()) {
-                        Unique(qualifier_info) => {
-                          match *qualifier_info.entity_info {
-                            LHSEntityInfo::Property {
-                              ref derived_qualifier,
-                              ..
-                            } => Some(
-                              objects
-                                .iter()
-                                .map(|object| {
-                                  RHSEntity::Object(QualifiedObject {
-                                    object: object.clone(),
-                                    qualifier: *derived_qualifier,
-                                  })
-                                })
-                                .collect(),
-                            ),
-                            LHSEntityInfo::Aggregate {
-                              ref derived_matchers,
-                              ..
-                            } =>
-                            // if there is only one object on the left, then just assign its qualifier
-                            // to every object on the right
-                            {
-                              if derived_matchers.len() == 1 {
-                                let qualifier = derived_matchers[0].qualifier;
-                                Some(
-                                  objects
-                                    .iter()
-                                    .map(|object| {
-                                      RHSEntity::Object(QualifiedObject {
-                                        object: object.clone(),
-                                        qualifier,
-                                      })
-                                    })
-                                    .collect(),
-                                )
-                              } else {
-                                // otherwise, pair things on the right with things on the left.
-                                let mut objects_map: HashMap<&ObjectName, &QualifiedObject> =
-                                  HashMap::new();
-                                for matcher in derived_matchers.iter() {
-                                  objects_map.insert(&matcher.object, matcher);
-                                }
-                                let mut matchers = Vec::new();
-                                for object in objects {
-                                  match objects_map.get(object) {
-                                    None => return None,
-                                    Some(match_object) => {
-                                      matchers.push(RHSEntity::Object(QualifiedObject {
-                                        object: match_object.object.clone(),
-                                        qualifier: match_object.qualifier,
-                                      }))
-                                    }
-                                  }
-                                }
-                                Some(matchers)
-                              }
-                            }
-                          }
-                        }
-                        Ambiguous => None,
-                      };
-                    mb_from_cell
-                      .or_else(mb_from_overall)
-                      .or_else(mb_from_qualifier)
-                      .unwrap_or_else(|| {
-                        panic!(
-                          "Could not disambiguate {:?} for entity {:?} on RHS {:?}",
-                          match_entity.qualifier, match_entity.entity, overall_lhs_info
-                        )
-                      })
-                  }
-                }
-              }
-              LegendBody::Property(_) => {
-                // otherwise, we need to find out which property on the
-                // LHS this property refers to.
-                //
-                // First define a utility to finish up once we have found
-                // something on the LHS:
-                let with_lhs_info = |same_cell: bool, lhs_info: &LHSEntityInfo| {
-                  match lhs_info {
-                    LHSEntityInfo::Aggregate { .. } => panic!("Got LHS aggregate for property"),
-                    LHSEntityInfo::Property {
-                      original_qualifier,
-                      derived_qualifier,
-                      binder,
-                    } => {
-                      let with_qualifier = |qualifier| {
-                        vec![RHSEntity::Property {
-                          qualifier,
-                          binder: *binder,
-                          property: match_entity.entity.clone(),
-                        }]
-                      };
-                      let give_up = ||
-                        panic!(
-                          "Could not resolve ambiguous qualifier {:?} for entity {:?}",
-                          match_entity.qualifier,
-                          match_entity.entity);
-                      match resolve_qualifier(rule_direction, match_entity.qualifier) {
-                        // if we can resolve a qualifier immediately, use that one -- but
-                        // as explained above, treat passthrough specially
-                        Some(qualifier) =>
-                          with_qualifier(
-                            if
-                              same_cell &&
-                              qualifier == Qualifier::Passthrough &&
-                              *derived_qualifier != Qualifier::Passthrough
-                            {
-                              Qualifier::Stationary
-                            } else {
-                              qualifier
-                            }
-                          ),
-                        None => {
-                          // otherwise, first try use the one from the LHSInfo
-                          if original_qualifier == &match_entity.qualifier {
-                            with_qualifier(*derived_qualifier)
-                          } else {
-                            // if that fails too, try to get it from the qualifier map
-                            match overall_lhs_info.get_qualifier(match_entity.qualifier.unwrap()) {
-                              Unique(qualifier_info) => {
-                                match *qualifier_info.entity_info {
-                                  // if the qualifier is attached to a property, just use it
-                                  LHSEntityInfo::Property { ref derived_qualifier, .. } =>
-                                    with_qualifier(*derived_qualifier),
-                                  LHSEntityInfo::Aggregate { ref derived_matchers, .. } =>
-                                    // if it's attached to an aggregate, only accept if it's just one object
-                                    if derived_matchers.len() == 1 {
-                                      with_qualifier(derived_matchers[0].qualifier)
-                                    } else {
-                                      give_up()
-                                    }
-                                }
-                              }
-                              Ambiguous =>
-                                give_up(),
-                            }
-                          }
-                        }
-                      }
-                    }
-                  }
-                };
-                // Then, first check if we have a matching property in the same cell:
-                match cell_lhs_info.get_entity(&match_entity.entity) {
-                  Unique(lhs_info) => with_lhs_info(true, &lhs_info),
-                  Ambiguous => {
-                    // Failing that, see if we have it anywhere else in the rule:
-                    match overall_lhs_info.get_entity(&match_entity.entity) {
-                      Unique(lhs_info) => with_lhs_info(false, &lhs_info),
-                      // otherwise we're done
-                      Ambiguous => panic!(
-                        "Could not find property matching {:?} anywhere on the LHS (cell or overall)",
-                        match_entity.entity
-                      ),
-                    }
-                  }
-                }
-              }
+  ) -> RHSCell {
+    let add_random = |random: &mut Option<HashSet<ObjectName>>, object: &ObjectName| match random {
+      None => {
+        let objects = HashSet::new();
+        *random = Some(objects);
+      }
+      Some(ref mut objects) => {
+        objects.insert(object.clone());
+      }
+    };
+    let mut random = None;
+    let mut normal = Vec::new();
+    for match_entity in entities {
+      // if the qualifier is random, just resolve this immediately
+      if match_entity.qualifier == Some(ast::EntityQualifier::Random) {
+        match &self.legend[&match_entity.entity] {
+          LegendBody::Aggregate(objects) if objects.len() == 1 => {
+            for object in objects {
+              add_random(&mut random, object);
             }
           }
-        })
-        .collect(),
-    )
+          LegendBody::Aggregate(_) => {
+            panic!("Cannot use random with aggregate {}", match_entity.entity)
+          }
+          LegendBody::Property(objects) => {
+            for object in objects {
+              add_random(&mut random, object);
+            }
+          }
+        }
+      } else {
+        // when dealing with an aggregate...
+        match &self.legend[&match_entity.entity] {
+          LegendBody::Aggregate(objects) => self.process_rhs_aggregate(
+            rule_direction,
+            overall_lhs_info,
+            cell_lhs_info,
+            match_entity,
+            &mut normal,
+            objects,
+          ),
+          LegendBody::Property(property_objects) => self.process_rhs_property(
+            rule_direction,
+            overall_lhs_info,
+            cell_lhs_info,
+            match_entity,
+            &mut normal,
+            property_objects,
+          ),
+        }
+      }
+    }
+
+    RHSCell {
+      normal: Rc::new(normal),
+      random,
+    }
   }
 
   fn expand_normal_rule_body(
@@ -964,7 +1007,7 @@ impl<'a> CompileState<'a> {
     property_counter: &mut usize,
     rule_direction: RuleDirection,
     matchers: &[ast::Matcher<Vec<ast::MatchEntity>>],
-  ) -> Vec<Vec<Matcher<Objects<RHSEntity>>>> {
+  ) -> Vec<Vec<Matcher<RHSCell>>> {
     // first collect all the LHS properties
     let with_lhs_properties = big_cross_product_lhs_info(
       &matchers
@@ -1384,36 +1427,36 @@ mod tests {
   }
 
   #[test]
-  fn expand_lhs_qualifier_none() {
+  fn resolve_lhs_qualifier_none() {
     assert_eq!(
-      expand_qualifier(RuleDirection::Down, None),
-      vec![Qualifier::Passthrough]
+      resolve_qualifier(RuleDirection::Down, None),
+      ResolvedQualifier::Normal(&[Qualifier::Passthrough])
     );
   }
 
   #[test]
-  fn expand_lhs_qualifier_foward() {
+  fn resolve_lhs_qualifier_foward() {
     assert_eq!(
-      expand_qualifier(RuleDirection::Down, Some(ast::EntityQualifier::ArrowRight)),
-      vec![Qualifier::Down]
+      resolve_qualifier(RuleDirection::Down, Some(ast::EntityQualifier::ArrowRight)),
+      ResolvedQualifier::Normal(&[Qualifier::Down])
     );
     assert_eq!(
-      expand_qualifier(RuleDirection::Right, Some(ast::EntityQualifier::ArrowRight)),
-      vec![Qualifier::Right]
+      resolve_qualifier(RuleDirection::Right, Some(ast::EntityQualifier::ArrowRight)),
+      ResolvedQualifier::Normal(&[Qualifier::Right])
     );
   }
 
   #[test]
-  fn expand_lhs_qualifier_moving() {
+  fn resolve_lhs_qualifier_moving() {
     assert_eq!(
-      expand_qualifier(RuleDirection::Down, Some(ast::EntityQualifier::Moving)).sort(),
-      vec![
-        Qualifier::Down,
+      resolve_qualifier(RuleDirection::Down, Some(ast::EntityQualifier::Moving)),
+      ResolvedQualifier::Normal(&[
         Qualifier::Up,
+        Qualifier::Down,
+        Qualifier::Left,
         Qualifier::Right,
-        Qualifier::Left
-      ]
-      .sort()
+        Qualifier::Action,
+      ])
     );
   }
 
