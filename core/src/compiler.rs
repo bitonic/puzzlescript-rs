@@ -1383,6 +1383,7 @@ mod tests {
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
+  */
 
   #[test]
   fn third_party_skipping_stones() {
@@ -1390,7 +1391,6 @@ mod tests {
     let ast = parser::parse(file).unwrap();
     compile(&ast).unwrap();
   }
-  */
 
   #[test]
   fn big_cross_product_empty() {
